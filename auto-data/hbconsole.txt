@@ -1,0 +1,203 @@
+################################################################################
+##
+## Filename: 	hbconsole.txt
+##
+## Project:	AutoFPGA, a utility for composing FPGA designs from peripherals
+##
+## Purpose:	Provide access to both a debugging bus and a console port for
+##		the CPU.  The debugging bus will be given 7-bit transfer codes
+##	with the high bit set, the console the same codes but with bit 8 clear.
+##
+##	This version of the bus console uses the hexbus, rather than the
+##	wbu (wishbone-to-uart) bus.
+##
+## Creator:	Dan Gisselquist, Ph.D.
+##		Gisselquist Technology, LLC
+##
+################################################################################
+##
+## Copyright (C) 2017, Gisselquist Technology, LLC
+##
+## This program is free software (firmware): you can redistribute it and/or
+## modify it under the terms of  the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License, or (at
+## your option) any later version.
+##
+## This program is distributed in the hope that it will be useful, but WITHOUT
+## ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
+## FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+## for more details.
+##
+## You should have received a copy of the GNU General Public License along
+## with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
+## target there if the PDF file isn't present.)  If not, see
+## <http://www.gnu.org/licenses/> for a copy.
+##
+## License:	GPL, v3, as defined and found on www.gnu.org,
+##		http://www.gnu.org/licenses/gpl.html
+##
+##
+################################################################################
+##
+##
+@REGISTER.BUS=hb
+@PREFIX=hb
+@ACCESS=WBUBUS_MASTER
+@MASTER.BUS=hb
+@MASTER.TYPE=HOST
+@BUS.NAME=hb
+@BUS.CLOCK=clk
+@BUS.WIDTH=32
+@BUS.TYPE=wb
+@$BAUDRATE=1000000
+@CLOCK.NAME=clk
+@$SETUP=@$(CLOCK.FREQUENCY) / @$BAUDRATE
+@SETUP.FORMAT=24'h%x
+@$BUS_ADDRESS_WIDTH= @$(MASTER.BUS.AWID)
+@TOP.PORTLIST=
+		// Parallel port to wishbone / console interface
+		i_pp_dir, i_pp_clk, io_pp_data, o_pp_clkfb
+@TOP.IODECL=
+	// Parallel port to wishbone / console interface
+	input	wire		i_pp_dir, i_pp_clk;
+	inout	wire	[7:0]	io_pp_data;
+	output	wire		o_pp_clkfb;
+@TOP.DEFNS=
+	//
+	//
+	// Parallel port interface
+	//
+	//
+	wire	[7:0]	i_pp_data, w_pp_data;
+	wire		w_pp_dbg;
+
+@TOP.INSERT=
+	//
+	// Parallel port I/O pin control
+	ppio	@$(PREFIX)i_io(i_pp_dir, io_pp_data, w_pp_data, i_pp_data);
+@TOP.MAIN=
+		// External USB-UART bus control
+		i_pp_clk, i_pp_dir, i_pp_data, w_pp_data, o_pp_clkfb, w_pp_dbg
+@MAIN.PORTLIST=
+		// Command and Control port
+		i_pp_clk, i_pp_dir, i_pp_data, o_pp_data, o_pp_clkfb, o_pp_dbg
+@MAIN.IODECL=
+	input	wire		i_pp_clk, i_pp_dir;
+	input	wire	[7:0]	i_pp_data;
+	output	wire	[7:0]	o_pp_data;
+	output	wire		o_pp_clkfb;
+	output	wire		o_pp_dbg;
+@MAIN.DEFNS=
+	// Definitions for the WB-UART converter.  We really only need one
+	// (more) non-bus wire--one to use to select if we are interacting
+	// with the ZipCPU or not.
+	wire		pp_rx_stb,  pp_tx_stb,  pp_tx_busy;
+	wire	[7:0]	pp_rx_data, pp_tx_data;
+//
+	wire	[31:0]	console_dbg;
+@$ZIP_ADDRESS_BIT=@$BUS_ADDRESS_WIDTH-1
+@$ZIP_ADDRESS=(1<<(@$.ZIP_ADDRESS_BIT+2))
+@ZIP_ADDRESS.FORMAT= 0x%08x
+@$ZIP_DBGDATA=4+@$.ZIP_ADDRESS
+@ZIP_DBGDATA.FORMAT= 0x%08x
+@MAIN.INSERT=
+	// Parallel port logic
+	pport	@$(PREFIX)i_pp(i_clk,
+			pp_rx_stb, pp_rx_data,
+			pp_tx_stb, pp_tx_data, pp_tx_busy,
+			i_pp_dir, i_pp_clk, i_pp_data, o_pp_data,
+				o_pp_clkfb, o_pp_dbg);
+`ifndef	BUSPIC_ACCESS
+	wire	w_bus_int;
+	assign	w_bus_int = 1'b0;
+`endif
+	wire	[29:0]	@$(PREFIX)_tmp_addr;
+	hbconsole genbus(@$(CLOCK.WIRE), pp_rx_stb, pp_rx_data,
+			@$(PREFIX)_cyc, @$(PREFIX)_stb, @$(PREFIX)_we, @$(PREFIX)_tmp_addr, @$(PREFIX)_data, @$(PREFIX)_sel,
+			@$(PREFIX)_ack, @$(PREFIX)_stall, @$(PREFIX)_err, @$(PREFIX)_idata,
+			w_bus_int,
+			pp_tx_stb, pp_tx_data, pp_tx_busy,
+			//
+			w_console_tx_stb, w_console_tx_data, w_console_busy,
+			w_console_rx_stb, w_console_rx_data);
+	assign	@$(PREFIX)_sel = 4'hf;
+	assign	@$(PREFIX)_addr= @$(PREFIX)_tmp_addr[(@$BUS_ADDRESS_WIDTH-1):0];
+@REGDEFS.H.DEFNS=
+#define	R_ZIPCTRL	@$.ZIP_ADDRESS
+#define	R_ZIPDATA	@$.ZIP_DBGDATA
+#define	RESET_ADDRESS	@$[0x%08x](RESET_ADDRESS)
+@SIM.INCLUDE=
+#include "port.h"
+#include "pportsim.h"
+@SIM.DEFNS=
+	PPORTSIM	*m_@$(PREFIX);
+@SIM.INIT=
+		m_@$(PREFIX) = new PPORTSIM(FPGAPORT, true);
+@SIM.TICK=
+		int	pp_clk = m_core->i_pp_clk,
+			pp_dir = m_core->i_pp_dir;
+		m_core->i_pp_data = (*m_@$(PREFIX))(
+			pp_clk, pp_dir, m_core->o_pp_data,
+			m_core->o_pp_clkfb);
+		m_core->i_pp_clk = pp_clk;
+		m_core->i_pp_dir = pp_dir;
+#
+#
+#
+#
+#
+@PREFIX=console
+@NADDR=	4
+@SLAVE.TYPE=	OTHER
+@SLAVE.BUS=wb
+@ACCESS= BUSCONSOLE_ACCESS
+@INT.UARTRX.WIRE=uartrx_int
+@INT.UARTTX.WIRE=uarttx_int
+@INT.UARTRXF.WIRE=uartrxf_int
+@INT.UARTTXF.WIRE=uarttxf_int
+@INT.UARTRX.PIC=
+@INT.UARTTX.PIC=
+@INT.UARTRXF.PIC= buspic
+@INT.UARTTXF.PIC= buspic
+@MAIN.DEFNS=
+	// Console definitions
+	wire	w_console_rx_stb, w_console_tx_stb, w_console_busy;
+	wire	[6:0]	w_console_rx_data, w_console_tx_data;
+@MAIN.INSERT=
+	console @$(PREFIX)i(@$(SLAVE.BUS.CLOCK.WIRE), 1'b0,
+ 			wb_cyc, (wb_stb)&&(@$(PREFIX)_sel), wb_we,
+				wb_addr[1:0], wb_data,
+ 			@$(PREFIX)_ack, @$(PREFIX)_stall, @$(PREFIX)_data,
+			w_console_tx_stb, w_console_tx_data, w_console_busy,
+			w_console_rx_stb, w_console_rx_data,
+			uartrx_int, uarttx_int, uartrxf_int, uarttxf_int,
+			console_dbg);
+@MAIN.ALT=
+	assign	w_console_tx_stb  = 1'b0;
+	assign	w_console_tx_data = 7'h7f;
+@REGS.NOTE = // CONSOLE registers
+@REGS.N = 3
+## This is unused @REGS.0 = 0 R_CONSOLE_SETUP	 USETUP
+@REGS.0 = 1 R_CONSOLE_FIFO	 UFIFO
+@REGS.1 = 2 R_CONSOLE_UARTRX	 RX
+@REGS.2 = 3 R_CONSOLE_UARTTX	 TX
+
+@BDEF.DEFN =
+typedef struct  CONSOLE_S {
+	unsigned	u_setup;
+	unsigned	u_fifo;
+	unsigned	u_rx, u_tx;
+} CONSOLE;
+
+@BDEF.IONAME= io_console
+@BDEF.IOTYPE= CONSOLE
+@BDEF.OSDEF=	_BOARD_HAS_BUSCONSOLE
+@BDEF.OSVAL=static volatile CONSOLE *const _uart = ((CONSOLE *)@$.BASE);
+@RTL.MAKE.GROUP= HBBUS
+@RTL.MAKE.SUBD= ../hexbus
+@RTL.MAKE.FILES= hbconsole.v hbdechex.v hbdeword.v hbexec.v hbgenhex.v
+	hbidle.v hbints.v hbnewline.v hbpack.v console.v
+@PREFIX=pport
+@RTL.MAKE.GROUP= PPORT
+@RTL.MAKE.SUBD=../pport
+@RTL.MAKE.FILES= ppio.v pport.v ufifo.v

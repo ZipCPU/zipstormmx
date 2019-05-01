@@ -1,0 +1,75 @@
+################################################################################
+##
+## Filename: 	wbpwmaudio.txt
+##
+## Project:	AutoFPGA, a utility for composing FPGA designs from peripherals
+##
+## Purpose:	To define the interface of a generic PWM audio component
+##
+## Creator:	Dan Gisselquist, Ph.D.
+##		Gisselquist Technology, LLC
+##
+################################################################################
+##
+## Copyright (C) 2017-2018, Gisselquist Technology, LLC
+##
+## This program is free software (firmware): you can redistribute it and/or
+## modify it under the terms of  the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License, or (at
+## your option) any later version.
+##
+## This program is distributed in the hope that it will be useful, but WITHOUT
+## ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
+## FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+## for more details.
+##
+## You should have received a copy of the GNU General Public License along
+## with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
+## target there if the PDF file isn't present.)  If not, see
+## <http://www.gnu.org/licenses/> for a copy.
+##
+## License:	GPL, v3, as defined and found on www.gnu.org,
+##		http://www.gnu.org/licenses/gpl.html
+##
+##
+################################################################################
+##
+##
+@PREFIX=pwmaudio
+@DEVID=PWMAUDIO
+@$NADDR=2
+@ACCESS=@$(DEVID)_ACCESS
+@SLAVE.TYPE=DOUBLE
+@SLAVE.BUS=wb
+@MAIN.INSERT=
+	wbpwmaudio #(.DEFAULT_RELOAD(16'd1042),.VARIABLE_RATE(0))
+		@$(PREFIX)i(i_clk, 1'b0,
+			(wb_cyc), (wb_stb)&&(@$(PREFIX)_sel), wb_we,
+				wb_addr[1:0], wb_data,
+				@$(PREFIX)_ack, @$(PREFIX)_stall,
+				@$(PREFIX)_data,
+			o_@$(PREFIX),
+			{ o_@$(PREFIX)_gain, o_@$(PREFIX)_shutdown_n },
+			@$(PREFIX)_int);
+@REGS.N=2
+@REGS.0= 0 R_@$(DEVID) PWM PWMSAMPLE
+@REGS.1= 1 R_@$(DEVID)RATE PWMRATE
+@BDEF.DEFNS=
+#define	PWM_SET_GAIN		0x218000
+#define	PWM_CLEAR_GAIN		0x018000
+#define	PWM_SHUTDOWN		0x018000
+#define	PWM_CLEAR_SHUTDOWN	0x118000
+#define	PWM_POWER_ON		(PWM_SET_GAIN | PWM_CLEAR_SHUTDOWN)
+
+typedef	struct	@$(PREFIX)_S {
+	int	pwm_sample;
+	int	pwm_rate;
+};
+@INT.PWM.WIRE=@$(PREFIX)_int
+@INT.PWM.PIC=buspic
+@BDEF.OSDEF=_BOARD_HAS_@$(DEVID)
+@BDEF.IONAME=_@$(PREFIX)
+@BDEF.IOTYPE=@$(DEVID)
+@BDEF.OSVAL=static volatile @$(BDEF.IOTYPE) *const @$(BDEF.IONAME) = ((@$BDEF.IOTYPE *)@$(REGBASE));
+@RTL.MAKE.GROUP= @$(DEVID)
+@RTL.MAKE.FILES= wbpwmaudio.v
