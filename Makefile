@@ -2,7 +2,7 @@
 ##
 ## Filename:	Makefile
 ##
-## Project:	ICO Zip, iCE40 ZipCPU demonsrtation project
+## Project:	ZipSTORM-MX, an iCE40 ZipCPU demonstration project
 ##
 ## Purpose:	A master project makefile.  It tries to build all targets
 ##		within the project, mostly by directing subdirectory makes.
@@ -13,7 +13,7 @@
 ##
 ################################################################################
 ##
-## Copyright (C) 2016-2018, Gisselquist Technology, LLC
+## Copyright (C) 2019, Gisselquist Technology, LLC
 ##
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of  the GNU General Public License as published
@@ -38,7 +38,7 @@
 ##
 ##
 .PHONY: all
-all:	check-install archive datestamp autodata rtl sw sim # bench
+all:	check-install datestamp autodata rtl sw sim # bench
 #
 # Could also depend upon load, if desired, but not necessary
 SIM   := `find sim -name Makefile` `find sim -name "*.cpp"` `find sim -name "*.h"` `find sim -name "*.c"`
@@ -113,8 +113,8 @@ check-icepack:
 #
 .PHONY: datestamp
 datestamp: check-perl
-	@bash -c 'if [ ! -e $(YYMMDD)-build.v ]; then rm -f 20??????-build.v; perl mkdatev.pl > $(YYMMDD)-build.v; rm -f rtl/icozip/builddate.v; fi'
-	@bash -c 'if [ ! -e rtl/icozip/builddate.v ]; then cp $(YYMMDD)-build.v rtl/icozip/builddate.v; fi'
+	@bash -c 'if [ ! -e $(YYMMDD)-build.v ]; then rm -f 20??????-build.v; perl mkdatev.pl > $(YYMMDD)-build.v; rm -f rtl/builddate.v; fi'
+	@bash -c 'if [ ! -e rtl/builddate.v ]; then cp $(YYMMDD)-build.v rtl/builddate.v; fi'
 
 #
 #
@@ -124,7 +124,8 @@ datestamp: check-perl
 ARCHIVEFILES := $(BENCH) $(SW) $(RTL) $(NOTES) $(PROJ) $(BIN) $(CONSTRAINTS) $(AUTODATA) README.md
 .PHONY: archive
 archive:
-	tar --transform s,^,$(YYMMDD)-ico/, -chjf $(YYMMDD)-ico.tjz $(ARCHIVEFILES)
+	@mkdir -p archive/
+	tar --transform s,^,$(YYMMDD)-mx/, -chjf archive/$(YYMMDD)-mx.tjz $(ARCHIVEFILES)
 
 #
 #
@@ -135,6 +136,7 @@ autodata: check-autofpga
 	$(MAKE) --no-print-directory --directory=auto-data
 	$(call copyif-changed,auto-data/toplevel.v,rtl/toplevel.v)
 	$(call copyif-changed,auto-data/main.v,rtl/main.v)
+	$(call copyif-changed,auto-data/iscachable.v,rtl/cpu/iscachable.v)
 	$(call copyif-changed,auto-data/regdefs.h,sw/host/regdefs.h)
 	$(call copyif-changed,auto-data/regdefs.cpp,sw/host/regdefs.cpp)
 	$(call copyif-changed,auto-data/board.h,sw/board/board.h)
@@ -152,7 +154,7 @@ doc:
 verilated: rtl
 
 .PHONY: rtl
-rtl: check-yosys check-arachnepnr check-icepack check-icetime datestamp autodata
+rtl: check-yosys check-nextpnr check-icepack check-icetime datestamp autodata
 	$(SUBMAKE) rtl
 
 #

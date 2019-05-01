@@ -2,7 +2,7 @@
 ##
 ## Filename:	auto-data/Makefile
 ##
-## Project:	ICO Zip, iCE40 ZipCPU demonsrtation project
+## Project:	ZipSTORM-MX, an iCE40 ZipCPU demonstration project
 ##
 ## Purpose:	To coordinate the build of the glue logic holding this design
 ##		together via autofpga.
@@ -13,7 +13,7 @@
 ##
 ################################################################################
 ##
-## Copyright (C) 2017-2018, Gisselquist Technology, LLC
+## Copyright (C) 2019, Gisselquist Technology, LLC
 ##
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of  the GNU General Public License as published
@@ -38,7 +38,7 @@
 ##
 ##
 .PHONY: all
-all:	data install
+all:	data
 #
 # Could also depend upon load, if desired, but not necessary
 #
@@ -46,18 +46,24 @@ all:	data install
 # of parts and pieces of our project that autofpga will copy/paste into our
 # main project files.
 #
-DATA := global.txt bkram.txt buserr.txt clock25.txt		\
-	pic.txt pwrcount.txt version.txt			\
-	hbconsole.txt gpio.txt dlyarbiter.txt zipbones.txt	\
-	spixpress.txt spixscope.txt
-	# nodelay.txt
-	# Not used: rtclite.txt watchdog.txt
-	# Scopes, pick only one: spixscope sramscope dbgscope
+BASE    := global.txt dlyarbiter.txt
+AUX     := version.txt buserr.txt pic.txt pwrcount.txt
+IO      := spio.txt # gpio.txt
+RTC     := # rtclight.txt # rtcdate.txt
+DBGBUS  := hbconsole.txt
+MEMORY  := bkram.txt spixpress.txt # sdram.txt
+CPU     := zipbones.txt
+SCOPES  := # memsscope.txt # spixscope.txt # sdramscope.txt # cpuscope.txt
+LDSCRIPT:= mem_all.txt mem_flash_bkram.txt mem_bkram_only.txt mem_sdram_bkram.txt
+DATA := clock25.txt $(BASE) $(AUX) $(IO) $(RTC)			\
+	$(DBGBUS) $(MEMORY) $(CPU) $(SCOPES) $(LDSCRIPT)
 
 AUTOFPGA := autofpga
+$(AUTOFPGA):
+
 .PHONY: data
-data: $(DATA) blackmx.pcf
-	$(AUTOFPGA) -o . $(DATA)
+data: $(AUTOFPGA) $(DATA) blackmx.pcf
+	$(AUTOFPGA) -d -o . $(DATA)
 
 clean:
 	rm -f toplevel.v main.v regdefs.h regdefs.cpp board.h board.ld

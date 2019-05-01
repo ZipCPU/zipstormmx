@@ -63,7 +63,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2018, Gisselquist Technology, LLC
+// Copyright (C) 2015-2019, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -177,7 +177,8 @@ module	zipsystem(i_clk, i_reset,
 `endif
 		);
 	parameter	RESET_ADDRESS=32'h1000_0000, ADDRESS_WIDTH=30,
-			LGICACHE=10;
+			LGICACHE=10,
+			LGDCACHE=12;	// Set to zero for no data cache
 	parameter [0:0]	START_HALTED=1;
 	parameter	EXTERNAL_INTERRUPTS=1,
 `ifdef	OPT_MULTIPLY
@@ -610,28 +611,23 @@ module	zipsystem(i_clk, i_reset,
 	assign	dmac_int = 1'b0;
 `endif
 
-	wire		ctri_sel, ctri_stall;
-	reg		ctri_ack;
+	wire		ctri_sel, ctri_stall, ctri_ack;
 	wire	[31:0]	ctri_data;
 	assign	ctri_sel = (sys_stb)&&(sel_apic);
-	initial	ctri_ack = 1'b0;
-	always @(posedge i_clk)
-		ctri_ack <= (ctri_sel)&&(!cpu_reset);
-	assign	ctri_stall = 1'b0;
 `ifdef	INCLUDE_ACCOUNTING_COUNTERS
 	//
 	// Counter Interrupt controller
 	//
 	generate if (EXTERNAL_INTERRUPTS <= 9)
 	begin : ALT_PIC
-		icontrol #(8)	ctri(i_clk, cpu_reset, (ctri_sel),
-					sys_data, ctri_data, alt_int_vector[7:0],
-					ctri_int);
+		icontrol #(8)	ctri(i_clk, cpu_reset, (ctri_sel), sys_we,
+				sys_data, ctri_ack, ctri_stall, ctri_data,
+				alt_int_vector[7:0], ctri_int);
 	end else begin : ALT_PIC
 		icontrol #(8+(EXTERNAL_INTERRUPTS-9))
-				ctri(i_clk, cpu_reset, (ctri_sel),
-					sys_data, ctri_data,
-					alt_int_vector[(EXTERNAL_INTERRUPTS-2):0],
+				ctri(i_clk, cpu_reset, (ctri_sel), sys_we,
+				sys_data, ctri_ack, ctri_stall, ctri_data,
+				alt_int_vector[(EXTERNAL_INTERRUPTS-2):0],
 					ctri_int);
 	end endgenerate
 
@@ -644,8 +640,8 @@ module	zipsystem(i_clk, i_reset,
 		assign	ctri_int   = 1'b0;
 	end else begin : ALT_PIC
 		icontrol #(EXTERNAL_INTERRUPTS-9)
-				ctri(i_clk, cpu_reset, (ctri_sel),
-					sys_data, ctri_data,
+				ctri(i_clk, cpu_reset, (ctri_sel), sys_we,
+				sys_data, ctri_ack, ctri_stall, ctri_data,
 				alt_int_vector[(EXTERNAL_INTERRUPTS-10):0],
 					ctri_int);
 	end endgenerate
@@ -695,27 +691,20 @@ module	zipsystem(i_clk, i_reset,
 	//
 	// The programmable interrupt controller peripheral
 	//
-	wire		pic_interrupt;
+	wire		pic_interrupt, pic_ack, pic_stall;
+
 	generate if (EXTERNAL_INTERRUPTS < 9)
 	begin : MAIN_PIC
 		icontrol #(6+EXTERNAL_INTERRUPTS)	pic(i_clk, cpu_reset,
-					(sys_cyc)&&(sys_stb)&&(sys_we)
-						&&(sel_pic),
-					sys_data, pic_data,
+					(sys_cyc)&&(sys_stb)&&(sel_pic),sys_we,
+					sys_data, pic_ack, pic_stall, pic_data,
 					main_int_vector[(6+EXTERNAL_INTERRUPTS-1):0], pic_interrupt);
 	end else begin : MAIN_PIC
 		icontrol #(15)	pic(i_clk, cpu_reset,
-					(sys_cyc)&&(sys_stb)&&(sys_we)
-						&&(sel_pic),
-					sys_data, pic_data,
+					(sys_cyc)&&(sys_stb)&&(sel_pic),sys_we,
+					sys_data, pic_ack, pic_stall, pic_data,
 					main_int_vector[14:0], pic_interrupt);
 	end endgenerate
-
-	wire	pic_stall;
-	assign	pic_stall = 1'b0;
-	reg	pic_ack;
-	always @(posedge i_clk)
-		pic_ack <= (sys_stb)&&(sel_pic);
 
 	//
 	// The CPU itself
@@ -731,6 +720,7 @@ module	zipsystem(i_clk, i_reset,
 	zipcpu	#(	.RESET_ADDRESS(RESET_ADDRESS),
 			.ADDRESS_WIDTH(VIRTUAL_ADDRESS_WIDTH),
 			.LGICACHE(LGICACHE),
+			.OPT_LGDCACHE(LGDCACHE),
 			.IMPLEMENT_MPY(IMPLEMENT_MPY),
 			.IMPLEMENT_DIVIDE(IMPLEMENT_DIVIDE),
 			.IMPLEMENT_FPU(IMPLEMENT_FPU),

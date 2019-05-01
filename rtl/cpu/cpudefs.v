@@ -28,7 +28,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2018, Gisselquist Technology, LLC
+// Copyright (C) 2015-2019, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -74,7 +74,8 @@
 // A value of 2 will cause the multiply to have a single delay cycle, 3 will
 // have two delay cycles, and 4 (or more) will have 3 delay cycles.
 //
-`define	OPT_MULTIPLY	0
+//
+`define	OPT_MULTIPLY	4
 //
 //
 //

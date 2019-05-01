@@ -1,8 +1,8 @@
 ################################################################################
 ##
-## Filename: 	rtl/icozip/Makefile
+## Filename: 	rtl/Makefile
 ##
-## Project:	ICO Zip, iCE40 ZipCPU demonstration project
+## Project:	ZipSTORM-MX, an iCE40 ZipCPU demonstration project
 ##
 ## Purpose:	This makefile builds both the final bit file for loading, as
 ##		well as a verilator simulation of the entire icozip project.
@@ -12,7 +12,7 @@
 ##
 ################################################################################
 ##
-## Copyright (C) 2015-2017, Gisselquist Technology, LLC
+## Copyright (C) 2019, Gisselquist Technology, LLC
 ##
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of  the GNU General Public License as published
@@ -38,19 +38,20 @@
 ##
 .PHONY: all
 all: cpudefs.h design.h verilated bin
-CROSS ?=
-ARCH  ?= $(shell bash ../../sw/host/arch.sh)
-CXX   := $(CROSS)g++
+YYMMDD=`date +%Y%m%d`
+CXX   := g++
 FBDIR := .
-VDIRFB:= $(FBDIR)/obj-$(ARCH)
-VOBJ := obj-$(ARCH)
+VDIRFB:= $(FBDIR)/obj_dir
+SUBMAKE := $(MAKE) --no-print-directory --directory=$(VDIRFB) -f
 include auto.mk
-PCFFILE := icozip.pcf
+PCFFILE := blackmx.pcf
+ifeq ($(VERILATOR_ROOT),)
 VERILATOR := verilator
-# VERILATOR := VERILATOR_ROOT=/home/dan/tmp/verilator.git /home/dan/tmp/verilator.git/bin/verilator
-# toplevel.v rxuart.v txuart.v
-# rtcdate.v wbubus.v
-ICOSRCS := toplevel.v main.v $(WBUBUS) $(PPBUS) $(PPORT) cpu/icontrol.v memdev.v ufifo.v
+else
+VERILATOR := $(VERILATOR_ROOT)/bin/verilator
+endif
+VFLAGS     = -MMD -Wall -trace -Mdir $(VDIRFB) $(AUTOVDIRS)  -cc
+# ICOSRCS := toplevel.v main.v $(WBUBUS) $(PPBUS) $(PPORT) cpu/icontrol.v memdev.v ufifo.v
 
 #
 # Verilator build from the main level.  This is not the toplevel verilog
@@ -69,8 +70,9 @@ verilated: $(VDIRFB)/Vmain__ALL.a
 
 $(VDIRFB)/Vmain.cpp: $(VDIRFB)/Vmain.h
 $(VDIRFB)/Vmain.mk:  $(VDIRFB)/Vmain.h
+
 $(VDIRFB)/Vmain.h: main.v $(VFLIST)
-	$(VERILATOR) -O3 -Mdir $(VDIRFB) -trace -cc $(AUTOVDIRS) main.v
+	$(VERILATOR) $(VFLAGS) main.v
 
 cpudefs.h: cpu/cpudefs.v
 	@echo "Building cpudefs.h"
@@ -96,7 +98,7 @@ design.h: main.v
 	@echo "#endif // DESIGN_H" >> $@
 
 $(VDIRFB)/V%__ALL.a: $(VDIRFB)/V%.mk
-	cd $(VDIRFB); make -f V$*.mk
+	$(SUBMAKE) V$*.mk
 
 #
 #

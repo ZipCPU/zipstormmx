@@ -38,11 +38,11 @@
 @PREFIX=zip_dwb
 @$NADDR=(1<<@$(BUS.AWID))
 @ERROR.WIRE=@$(PREFIX)_err
-@DEPENDS=INCLUDE_ZIPCPU
 @SLAVE.TYPE=BUS
 @SLAVE.BUS.NAME=zip
 @SLAVE.BUS.WIDTH=32
-@SLAVE.CLOCK=clk
+@MASTER.TYPE=ARBITER
+@MASTER.BUS=wb
 @BUS.NAME=wb
 ##
 @PREFIX=hb_dwb
@@ -67,8 +67,8 @@
 	wire		@$(PREFIX)i_cyc, @$(PREFIX)i_stb, @$(PREFIX)i_we,
 			@$(PREFIX)i_ack, @$(PREFIX)i_stall, @$(PREFIX)i_err;
 	wire	[(@$(AWID)-1):0]	@$(PREFIX)i_addr;
-	wire	[31:0]	@$(PREFIX)i_odata, @$(PREFIX)i_idata;
-	wire	[3:0]	@$(PREFIX)i_sel;
+	wire	[(@$(MASTER.BUS.WIDTH)-1):0]	@$(PREFIX)i_odata, @$(PREFIX)i_idata;
+	wire	[(@$(MASTER.BUS.NSELECT)-1):0]	@$(PREFIX)i_sel;
 @MAIN.INSERT=
 `ifdef	INCLUDE_ZIPCPU
 	//
@@ -80,7 +80,7 @@
 	wbpriarbiter #(32,@$(AWID))	bus_arbiter(i_clk,
 		// The Zip CPU bus master --- gets the priority slot
 		@$(ZIPB)_cyc, @$(ZIPB)_stb, @$(ZIPB)_we, @$(ZIPB)_addr, @$(ZIPB)_data, @$(ZIPB)_sel,
-			@$(ZIPB)_ack, @$(ZIPB)_stall, @$(ZIPB)_err,
+			@$(ZIPB)_dwb_ack, @$(ZIPB)_dwb_stall, @$(ZIPB)_dwb_err,
 		// The UART interface master
 		(@$(SLAVE.BUS.NAME)_cyc),
 			(@$(SLAVE.BUS.NAME)_stb)&&(@$(PREFIX)_sel),

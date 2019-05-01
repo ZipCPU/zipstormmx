@@ -1,19 +1,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename: 	spio.v
+// Filename: 	rtl/spio.v
 //
-// Project:	ICO Zip, iCE40 ZipCPU demonsrtation project
+// Project:	OpenArty, an entirely open SoC based upon the Arty platform
 //
 // Purpose:	
-//
-//	With the USB cord on top, the board facing you, LED[0] is on the left.
 //
 // Creator:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2016, Gisselquist Technology, LLC
+// Copyright (C) 2019, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -37,32 +35,76 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
+`default_nettype none
+//
+module	spio(i_clk, i_wb_cyc, i_wb_stb, i_wb_we, i_wb_data, i_wb_sel,
+		o_wb_ack, o_wb_stall, o_wb_data,
+		i_btn, o_led, o_int);
+	parameter	NLEDS=8, NBTN=8;
+	input	wire			i_clk;
+	input	wire			i_wb_cyc, i_wb_stb, i_wb_we;
+	input	wire	[31:0]		i_wb_data;
+	input	wire	[3:0]		i_wb_sel;
+	output	reg			o_wb_ack;
+	output	wire			o_wb_stall;
+	output	wire	[31:0]		o_wb_data;
+	input	wire	[(NBTN-1):0]	i_btn;
+	output	reg	[(NLEDS-1):0]	o_led;
+	output	reg			o_int;
 
-module	spio(i_clk, i_wb_cyc, i_wb_stb, i_wb_we, i_wb_data, o_wb_data,
-		i_btn, i_led, o_led);
-	parameter	NLED = 2, NBTN = 2;
-	//
-	input			i_clk;
-	//
-	input			i_wb_cyc, i_wb_stb, i_wb_we;
-	input		[31:0]	i_wb_data;
-	output	wire	[31:0]	o_wb_data;
-	//
-	input		[(NBTN-1):0]	i_btn;
-	input				i_led;
-	output	reg	[(NLED-1):0]	o_led;
+	reg		led_demo;
+	reg	[(8-1):0]	r_led;
+	initial	r_led = 0;
+	initial	led_demo = 1'b1;
+	always @(posedge i_clk)
+	begin
+		if ((i_wb_stb)&&(i_wb_we)&&(i_wb_sel[0]))
+		begin
+			if (!i_wb_sel[1])
+				r_led[NLEDS-1:0] <= i_wb_data[(NLEDS-1):0];
+			else
+				r_led[NLEDS-1:0] <= (r_led[NLEDS-1:0]&(~i_wb_data[(8+NLEDS-1):8]))
+					|(i_wb_data[(NLEDS-1):0]&i_wb_data[(8+NLEDS-1):8]);
+		end
+	end
 
-	genvar	k;
-
-	initial	o_led    = 2'h0;
-	generate
-	for(k=0; k<NLED; k=k+1)
-		always @(posedge i_clk)
-			if ((i_wb_stb)&&(i_wb_we))
-				o_led[k] <= (i_wb_data[k+8])?i_wb_data[k]:o_led[k];
+	wire	[(8-1):0]	o_btn;
+	generate if (NBTN > 0)
+		debouncer #(NBTN) thedebouncer(i_clk,
+			i_btn, o_btn[(NBTN-1):0]);
 	endgenerate
 
-	assign	o_wb_data = { 24'h00, {(4-NBTN){1'b0}}, i_btn,
-				{(3-NLED){1'b0}}, i_led, o_led};
+	generate if (NBTN < 8)
+		assign	o_btn[7:NBTN] = 0;
+	endgenerate
 
+	// 2FF synchronizer for our switches
+	reg	[(8-1):0]	r_sw;
+	always @(*)
+		r_sw = 0;
+
+	always @(posedge i_clk)
+		if ((i_wb_stb)&&(i_wb_we)&&(i_wb_sel[3]))
+			led_demo <= i_wb_data[24];
+
+	assign	o_wb_data = { 7'h0, led_demo, r_sw, o_btn, r_led };
+
+	reg	[(NBTN-1):0]	last_btn;
+	always @(posedge i_clk)
+		last_btn <= o_btn[(NBTN-1):0];
+	always @(posedge i_clk)
+		o_int <= (|((o_btn[(NBTN-1):0])&(~last_btn)));
+
+	always @(posedge i_clk)
+		o_led <= r_led[NLEDS-1:0];
+
+	assign	o_wb_stall = 1'b0;
+	always @(posedge i_clk)
+		o_wb_ack <= (i_wb_stb);
+
+	// Make Verilator happy
+	// verilator lint_on  UNUSED
+	wire	[33:0]	unused;
+	assign	unused = { i_wb_cyc, i_wb_data, i_wb_sel[2] };
+	// verilator lint_off UNUSED
 endmodule

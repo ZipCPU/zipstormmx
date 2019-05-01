@@ -38,7 +38,7 @@
 ##
 .PHONY: all
 all:
-PROGRAMS := wbregs flashid dumpflash spixscope sramscope zipload zipstate dbgscope zipdbg
+PROGRAMS := wbregs flashid dumpflash spixscope zipload zipstate dbgscope zipdbg
 #
 SCOPES :=
 all: $(PROGRAMS) $(SCOPES)
@@ -100,8 +100,7 @@ zipload: $(BUSOBJS) $(OBJDIR)/zipelf.o
 # These depend upon the scopecls.o, the bus objects, as well as their
 # main file(s).
 #
-spixscope: $(ARCH)-spixscope
-$(ARCH)-spixscope: $(OBJDIR)/spixscope.o $(OBJDIR)/scopecls.o $(BUSOBJS)
+spixscope: $(OBJDIR)/spixscope.o $(OBJDIR)/scopecls.o $(BUSOBJS)
 	$(CXX) -g $^ -o $@
 dbgscope: $(OBJDIR)/dbgscope.o $(OBJDIR)/scopecls.o $(BUSOBJS)
 	$(CXX) -g $^ -o $@

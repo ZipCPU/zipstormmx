@@ -26,7 +26,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015,2018, Gisselquist Technology, LLC
+// Copyright (C) 2015,2018-2019, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -68,7 +68,6 @@ module	wbpriarbiter(i_clk,
 	// zeroing things on idle can make them stand out all the more when
 	// staring at wires and dumps and such.
 	parameter	[0:0]		OPT_ZERO_ON_IDLE = 1'b0;
-	parameter	[0:0]		F_OPT_CLK2FFLOGIC = 1'b0;
 	//
 	input	wire			i_clk;
 	// Bus A
@@ -149,21 +148,10 @@ module	wbpriarbiter(i_clk,
 	end endgenerate
 
 `ifdef	FORMAL
-
 `ifdef	WBPRIARBITER
-	generate if (F_OPT_CLK2FFLOGIC)
-	begin
-		reg	f_last_clk;
-		initial	assume(!i_clk);
-		always @($global_clock)
-		begin
-			assume(i_clk != f_last_clk);
-			f_last_clk <= i_clk;
-		end
-	end endgenerate
-`define	`ASSUME	assume
+`define	ASSUME	assume
 `else
-`define	`ASSUME	assert
+`define	ASSUME	assert
 `endif
 
 	reg	f_past_valid;
@@ -209,7 +197,6 @@ module	wbpriarbiter(i_clk,
 	fwb_master #(.F_MAX_STALL(0),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(0),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wbm(i_clk, f_reset,
@@ -219,7 +206,6 @@ module	wbpriarbiter(i_clk,
 	fwb_slave  #(.F_MAX_STALL(0),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(0),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wba(i_clk, f_reset,
@@ -229,7 +215,6 @@ module	wbpriarbiter(i_clk,
 	fwb_slave  #(.F_MAX_STALL(0),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(0),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wbb(i_clk, f_reset,

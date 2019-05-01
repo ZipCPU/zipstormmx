@@ -1,0 +1,13 @@
+autofpga.dbg
+bkram.ld
+board.h
+board.ld
+build.pcf
+flash.ld
+iscachable.v
+main.v
+main_tb.cpp
+master-pcf.zip
+rtl.make.inc
+testb.h
+toplevel.v
