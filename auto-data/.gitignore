@@ -11,3 +11,5 @@ master-pcf.zip
 rtl.make.inc
 testb.h
 toplevel.v
+regdefs.cpp
+regdefs.h

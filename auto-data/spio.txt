@@ -46,6 +46,19 @@
 @INT.SPIO.PIC=buspic
 @NLED=4
 @NBTN=2
+@TOP.PORTLIST=
+		// SPIO interface
+		io_btn, o_led
+@TOP.IODECL=
+	inout	wire	[1:0]	io_btn;
+	output	wire	[1:0]	o_led;
+@TOP.DEFNS=
+	wire	[3:0]	w_led;
+@TOP.INSERT=
+	// assign	io_btn = 2'bz;
+	assign	o_led = w_led[3:2];
+@TOP.MAIN=
+		io_btn, w_led
 @MAIN.PORTLIST=
 		// SPIO interface
 		i_btn, o_led
@@ -67,3 +80,6 @@
 @BDEF.IOTYPE=unsigned
 @BDEF.OSDEF= _BOARD_HAS_@$(DEVID)
 @BDEF.OSVAL= static volatile @$(BDEF.IOTYPE) *const @$(BDEF.IONAME) = ((@$(BDEF.IOTYPE) *)@$REGBASE);
+@RTL.MAKE.SUBD=.
+@RTL.MAKE.GROUP=SPIO
+@RTL.MAKE.FILES=spio.v debouncer.v

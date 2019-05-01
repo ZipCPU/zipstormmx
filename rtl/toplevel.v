@@ -55,13 +55,14 @@
 // The only exception is that any clocks with CLOCK.TOP tags will
 // also appear in this list
 //
-module	toplevel(
+module	toplevel(i_clk,
 		// Top level Dual-SPI I/O ports
 		o_spi_cs_n, o_spi_sck, o_spi_mosi, i_spi_miso,
+		o_spi_hold, o_spi_wp,
 		// UART/host to wishbone interface
 		i_uart_rx, o_uart_tx,
 		// SPIO interface
-		i_btn, o_led);
+		io_btn, o_led);
 	//
 	// Declaring our input and output ports.  We listed these above,
 	// now we are declaring them here.
@@ -74,17 +75,18 @@ module	toplevel(
 	//
 	// We start with any @CLOCK.TOP keys
 	//
+	input	wire		i_clk;
 	// Dual SPI flash
 	output	wire		o_spi_cs_n;
 	output	wire		o_spi_sck, o_spi_mosi;
 	input	wire		i_spi_miso;
+	output	wire		o_spi_hold, o_spi_wp;
 	// UART/host to wishbone interface
 	// (Debugging access) Serial port
 	input	wire	i_uart_rx;
 	output	wire	o_uart_tx;
-	// SPIO interface
-	input	wire	[2-1:0]	i_btn;
-	output	wire	[4-1:0]	o_led;
+	inout	wire	[1:0]	io_btn;
+	output	wire	[1:0]	o_led;
 
 
 	//
@@ -95,6 +97,7 @@ module	toplevel(
 	//
 	wire		s_clk, s_reset;
 	wire		spi_sck;
+	wire	[3:0]	w_led;
 
 
 	//
@@ -116,8 +119,7 @@ module	toplevel(
 		// SPI flash
 		o_spi_cs_n, spi_sck, o_spi_mosi, i_spi_miso,
 		i_uart_rx, o_uart_tx,
-		// SPIO interface
-		i_btn, o_led);
+		io_btn, w_led);
 
 
 	//
@@ -129,22 +131,7 @@ module	toplevel(
 
 	assign	s_reset = 1'b0; // This design requires local, not global resets
 
-`ifdef	VERILATOR
 	assign	s_clk = i_clk;
-`else
-	reg	[1:0]	clkgen;
-	reg		clk_25mhz;
-
-	initial clkgen = 2'b00;
-	always @(posedge i_clk)
-		clkgen <= clkgen + 1'b1;
-
-	initial	clk_25mhz = 1'b0;
-	always @(posedge i_clk)
-		clk_25mhz <= clkgen[1];
-
-	SB_GB global_buffer(clk_25mhz, s_clk);
-`endif
 
 
 	//
@@ -154,6 +141,11 @@ module	toplevel(
 	//
 	oclkddr spi_ddr_sck(s_clk, {!spi_sck, 1'b1}, o_spi_sck);
 
+	assign	o_spi_hold = 1;
+	assign	o_spi_wp   = 1;
+
+	// assign	io_btn = 2'bz;
+	assign	o_led = w_led[3:2];
 
 
 

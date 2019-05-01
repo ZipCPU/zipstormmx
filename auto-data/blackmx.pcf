@@ -1,0 +1,22 @@
+# Led, buttons and CS
+# set_io io_btn[0] 49 # B81/GBin5 L0 Blue led / S2 button
+# set_io io_btn[1] 52 # B82/GBin4 L1 Green led / S1 button
+# set_io o_led[0] 55 # B91 L3 Yellow led
+# set_io o_led[1] 56 # B94 cs Red led
+
+set_io dsck 76
+
+# QSpi
+# set_io o_spi_cs_n  71
+# set_io o_spi_sck   70
+# set_io o_spi_mosi  67
+# set_io i_spi_miso  68
+# set_io o_spi_hold  63
+# set_io o_spi_wp    64
+
+# Uart
+# set_io o_uart_tx 61
+# set_io i_uart_rx 62
+
+# Onboard 25Mhz oscillator
+set_io i_clk 60

@@ -53,5 +53,7 @@ HBUART := txuartlite.v rxuartlite.v ufifo.v
 
 HBBUSD := hexbus
 HBBUS  := $(addprefix $(HBBUSD)/,hbconsole.v hbdechex.v hbdeword.v hbexec.v hbgenhex.v hbidle.v hbints.v hbnewline.v hbpack.v console.v)
-VFLIST := main.v  $(BKRAM) $(BUSPIC) $(BUSDLY) $(ZIPCPU) $(FLASH) $(HBUART) $(HBBUS)
-AUTOVDIRS :=  -y cpu -y hexbus
+SPIOD := .
+SPIO  := $(addprefix $(SPIOD)/,spio.v debouncer.v)
+VFLIST := main.v  $(BKRAM) $(BUSPIC) $(BUSDLY) $(ZIPCPU) $(FLASH) $(HBUART) $(HBBUS) $(SPIO)
+AUTOVDIRS :=  -y cpu -y hexbus -y .

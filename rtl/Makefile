@@ -38,20 +38,34 @@
 ##
 .PHONY: all
 all: cpudefs.h design.h verilated bin
-YYMMDD=`date +%Y%m%d`
+#
+#
+TOPLVL=blackmx
+JSON    := $(TOPLVL).json
+ASCFILE := $(TOPLVL).asc
+BINFILE := $(TOPLVL).bin
+PCFFILE := $(TOPLVL).pcf
+bin: $(BINFILE)
+#
+# Tools
 CXX   := g++
-FBDIR := .
-VDIRFB:= $(FBDIR)/obj_dir
-SUBMAKE := $(MAKE) --no-print-directory --directory=$(VDIRFB) -f
-include auto.mk
-PCFFILE := blackmx.pcf
 ifeq ($(VERILATOR_ROOT),)
 VERILATOR := verilator
 else
 VERILATOR := $(VERILATOR_ROOT)/bin/verilator
 endif
+YOSYS     := yosys
+NEXTPNR   := nextpnr-ice40
+#
+#
+YYMMDD=`date +%Y%m%d`
+FBDIR := .
+VDIRFB:= $(FBDIR)/obj_dir
+SUBMAKE := $(MAKE) --no-print-directory --directory=$(VDIRFB) -f
+include auto.mk
 VFLAGS     = -MMD -Wall -trace -Mdir $(VDIRFB) $(AUTOVDIRS)  -cc
-# ICOSRCS := toplevel.v main.v $(WBUBUS) $(PPBUS) $(PPORT) cpu/icontrol.v memdev.v ufifo.v
+#
+#
 
 #
 # Verilator build from the main level.  This is not the toplevel verilog
@@ -107,26 +121,20 @@ $(VDIRFB)/V%__ALL.a: $(VDIRFB)/V%.mk
 bin: icozip.bin
 #
 #
-icozip.blif: toplevel.v $(VFLIST)
-	@echo yosys -ql yosys.log -p 'synth_ice40 -blif icozip.blif -top toplevel' ...
-	@yosys -ql yosys.log -p 'synth_ice40 -blif icozip.blif -json icozip.json -top toplevel' $^
+$(JSON): toplevel.v $(VFLIST)
+	@echo $(YOSYS) -ql yosys.log -p 'synth_ice40 -json $(JSON) -top toplevel' ...
+	@$(YOSYS) -ql yosys.log -p 'synth_ice40 -json $(JSON) -top toplevel' $^
 
 .PHONY: yosys
-yosys: icozip.blif
+yosys: $(JSON)
 
-icozip.asc: $(PCFFILE) icozip.blif
-	arachne-pnr -d 8k -r -P ct256 -p $(PCFFILE) icozip.blif -o $@
+$(ASCFILE): $(JSON) $(PCFFILE)
+	$(NEXTPNR) --hx8k --package tq144:4k --freq 25 --json $(JSON) --pcf $(PCFFILE) --asc $(ASCFILE)
+nextpnr: $(ASCFILE)
 
-NEXTPNR=~/bizcopy/nextpnr/build/nextpnr-ice40
-place-nextpnr: $(PCFFILE) icozip.json
-	$(NEXTPNR) --hx8k --package ct256 --pcf $(PCFFILE) --json icozip.json --gui
-
-.PHONY: arachne
-arachne: icozip.asc
-
-icozip.bin: icozip.asc
-	icepack icozip.asc icozip.bin
-	icetime -d hx8k -c 50 icozip.asc
+$(BINFILE): $(ASCFILE)
+	icepack $(ASCFILE) $(BINFILE)
+	icetime -d hx8k -c 25 $(ASCFILE)
 
 #
 #
@@ -134,7 +142,7 @@ icozip.bin: icozip.asc
 .PHONY: clean
 clean:
 	rm -rf $(VOBJ) cpudefs.h design.h
-	rm -rf *.blif *.asc *.bin
+	rm -rf $(JSON) $(ASCFILE) $(BINFILE)
 	rm -rf $(VDIRFB)/*.mk
 	rm -rf $(VDIRFB)/*.cpp
 	rm -rf $(VDIRFB)/*.h

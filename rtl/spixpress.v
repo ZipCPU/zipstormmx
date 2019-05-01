@@ -159,7 +159,8 @@ module	spixpress(i_clk, i_reset,
 	else
 		wdata_pipe[32:24] <= { wdata_pipe[31:23] };
 
-	assign	o_spi_mosi = wdata_pipe[32];
+	always @(*)
+		o_spi_mosi = wdata_pipe[32];
 
 	//
 	// WB-ACK

@@ -46,12 +46,14 @@
 @LD.PERM=rx
 @TOP.PORTLIST=
 		// Top level Dual-SPI I/O ports
-		o_spi_cs_n, o_spi_sck, o_spi_mosi, i_spi_miso
+		o_spi_cs_n, o_spi_sck, o_spi_mosi, i_spi_miso,
+		o_spi_hold, o_spi_wp
 @TOP.IODECL=
 	// Dual SPI flash
 	output	wire		o_spi_cs_n;
 	output	wire		o_spi_sck, o_spi_mosi;
 	input	wire		i_spi_miso;
+	output	wire		o_spi_hold, o_spi_wp;
 @TOP.DEFNS=
 	wire		spi_sck;
 @TOP.MAIN=
@@ -65,6 +67,8 @@
 	//
 	oclkddr spi_ddr_sck(s_clk, {!spi_sck, 1'b1}, o_spi_sck);
 
+	assign	o_spi_hold = 1;
+	assign	o_spi_wp   = 1;
 @MAIN.PORTLIST=
 		// The SPI Flash
 		o_spi_cs_n, o_spi_sck, o_spi_mosi, i_spi_miso
