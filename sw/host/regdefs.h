@@ -55,33 +55,33 @@
 //
 // Register address definitions, from @REGS.#d
 //
-#define	R_FLASHCFG      	0x00200000	// 00200000, wbregs names: FLASHCFG
+#define	R_FLASHCFG      	0x00010000	// 00010000, wbregs names: FLASHCFG
 // The bus timer
-#define	R_BUSTIMER      	0x00400000	// 00400000, wbregs names: BUSTIMER
+#define	R_BUSTIMER      	0x00020000	// 00020000, wbregs names: BUSTIMER
 // The bus timer
-#define	R_BUSTIMER      	0x00400000	// 00400000, wbregs names: BUSTIMER
+#define	R_BUSTIMER      	0x00020000	// 00020000, wbregs names: BUSTIMER
 // The watchdog timer
-#define	R_WATCHDOG      	0x00400004	// 00400004, wbregs names: WATCHDOG
+#define	R_WATCHDOG      	0x00020004	// 00020004, wbregs names: WATCHDOG
 // The watchdog timer
-#define	R_WATCHDOG      	0x00400004	// 00400004, wbregs names: WATCHDOG
+#define	R_WATCHDOG      	0x00020004	// 00020004, wbregs names: WATCHDOG
 // CONSOLE registers
-#define	R_CONSOLE_FIFO  	0x00600004	// 00600000, wbregs names: UFIFO
-#define	R_CONSOLE_UARTRX	0x00600008	// 00600000, wbregs names: RX
-#define	R_CONSOLE_UARTTX	0x0060000c	// 00600000, wbregs names: TX
-#define	R_BUSERR        	0x00800000	// 00800000, wbregs names: BUSERR
-#define	R_BUSERR        	0x00800000	// 00800000, wbregs names: BUSERR
-#define	R_PIC           	0x00800004	// 00800004, wbregs names: PIC
-#define	R_PIC           	0x00800004	// 00800004, wbregs names: PIC
-#define	R_PWRCOUNT      	0x00800008	// 00800008, wbregs names: PWRCOUNT
-#define	R_PWRCOUNT      	0x00800008	// 00800008, wbregs names: PWRCOUNT
-#define	R_SPIO          	0x0080000c	// 0080000c, wbregs names: SPIO
-#define	R_SPIO          	0x0080000c	// 0080000c, wbregs names: SPIO
-#define	R_VERSION       	0x00800010	// 00800010, wbregs names: VERSION
-#define	R_VERSION       	0x00800010	// 00800010, wbregs names: VERSION
-#define	R_BKRAM         	0x00a00000	// 00a00000, wbregs names: RAM
-#define	R_FLASH         	0x01000000	// 01000000, wbregs names: FLASH
-#define	R_ZIPCTRL       	0x02000000	// 02000000, wbregs names: CPU
-#define	R_ZIPDATA       	0x02000004	// 02000000, wbregs names: CPUD
+#define	R_CONSOLE_FIFO  	0x00030004	// 00030000, wbregs names: UFIFO
+#define	R_CONSOLE_UARTRX	0x00030008	// 00030000, wbregs names: RX
+#define	R_CONSOLE_UARTTX	0x0003000c	// 00030000, wbregs names: TX
+#define	R_BUSERR        	0x00040000	// 00040000, wbregs names: BUSERR
+#define	R_BUSERR        	0x00040000	// 00040000, wbregs names: BUSERR
+#define	R_PIC           	0x00040004	// 00040004, wbregs names: PIC
+#define	R_PIC           	0x00040004	// 00040004, wbregs names: PIC
+#define	R_PWRCOUNT      	0x00040008	// 00040008, wbregs names: PWRCOUNT
+#define	R_PWRCOUNT      	0x00040008	// 00040008, wbregs names: PWRCOUNT
+#define	R_SPIO          	0x0004000c	// 0004000c, wbregs names: SPIO
+#define	R_SPIO          	0x0004000c	// 0004000c, wbregs names: SPIO
+#define	R_VERSION       	0x00040010	// 00040010, wbregs names: VERSION
+#define	R_VERSION       	0x00040010	// 00040010, wbregs names: VERSION
+#define	R_BKRAM         	0x00050000	// 00050000, wbregs names: RAM
+#define	R_FLASH         	0x00080000	// 00080000, wbregs names: FLASH
+#define	R_ZIPCTRL       	0x00100000	// 00100000, wbregs names: CPU
+#define	R_ZIPDATA       	0x00100004	// 00100000, wbregs names: CPUD
 
 
 //
@@ -89,15 +89,15 @@
 //
 // @REGDEFS.H.DEFNS for masters
 #define	CLKFREQHZ	25000000
-#define	R_ZIPCTRL	0x02000000
-#define	R_ZIPDATA	0x02000004
+#define	R_ZIPCTRL	0x00100000
+#define	R_ZIPDATA	0x00100004
 #define	BAUDRATE	1000000
 // @REGDEFS.H.DEFNS for peripherals
-#define	BKRAMBASE	0x00a00000
+#define	BKRAMBASE	0x00050000
 #define	BKRAMLEN	0x00002000
-#define	FLASHBASE	0x01000000
-#define	FLASHLEN	0x01000000
-#define	FLASHLGLEN	24
+#define	FLASHBASE	0x00080000
+#define	FLASHLEN	0x00080000
+#define	FLASHLGLEN	19
 // @REGDEFS.H.DEFNS at the top level
 // End of definitions from REGDEFS.H.DEFNS
 //
@@ -121,7 +121,7 @@
 #define	CPU_uCC		0x001e
 #define	CPU_uPC		0x001f
 
-#define	RESET_ADDRESS	0x01000000
+#define	RESET_ADDRESS	0x00080000
 
 
 // @REGDEFS.H.INSERT for peripherals

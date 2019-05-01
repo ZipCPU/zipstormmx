@@ -2,8 +2,7 @@
 //
 // Filename: 	debouncer.v
 //
-// Project:	Debouncer project, a learning project to learn the impact
-//		of bouncing on logic within your device.
+// Project:	ZipSTORM-MX, an iCE40 ZipCPU demonstration project
 //
 // Purpose:	To "debounce" signals from within a group passed to this
 //		module.  It is assumed that each signal passed to this module
@@ -45,7 +44,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2017-2019, Gisselquist Technology, LLC
+// Copyright (C) 2019, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published

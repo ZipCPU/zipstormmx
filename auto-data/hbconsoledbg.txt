@@ -2,7 +2,7 @@
 ##
 ## Filename: 	hbconsoledbg.txt
 ##
-## Project:	AutoFPGA, a utility for composing FPGA designs from peripherals
+## Project:	ZipSTORM-MX, an iCE40 ZipCPU demonstration project
 ##
 ## Purpose:	Provide access to both a debugging bus and a console port for
 ##		the CPU.  The debugging bus will be given 7-bit transfer codes
@@ -16,7 +16,7 @@
 ##
 ################################################################################
 ##
-## Copyright (C) 2017, Gisselquist Technology, LLC
+## Copyright (C) 2019, Gisselquist Technology, LLC
 ##
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of  the GNU General Public License as published

@@ -2,7 +2,7 @@
 //
 // Filename: 	wbscopc.v
 //
-// Project:	WBScope, a wishbone hosted scope
+// Project:	ZipSTORM-MX, an iCE40 ZipCPU demonstration project
 //
 // Purpose:	This scope is identical in function to the wishbone scope
 //	found in wbscope, save that the output is compressed via a run-length
@@ -43,10 +43,10 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015,2017, Gisselquist Technology, LLC
+// Copyright (C) 2019, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //

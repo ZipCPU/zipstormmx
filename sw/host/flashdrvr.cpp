@@ -2,7 +2,7 @@
 //
 // Filename: 	flashdrvr.cpp
 //
-// Project:	ICO Zip, iCE40 ZipCPU demonsrtation project
+// Project:	ZipSTORM-MX, an iCE40 ZipCPU demonstration project
 //
 // Purpose:	Flash driver.  Encapsulates the erasing and programming (i.e.
 //		writing) necessary to set the values in a flash device.
@@ -12,10 +12,10 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2018, Gisselquist Technology, LLC
+// Copyright (C) 2019, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //

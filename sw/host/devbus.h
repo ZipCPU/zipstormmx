@@ -2,7 +2,7 @@
 //
 // Filename:	devbus.h
 //
-// Project:	VideoZip, a ZipCPU SoC supporting video functionality
+// Project:	ZipSTORM-MX, an iCE40 ZipCPU demonstration project
 //
 // Purpose:	The purpose of this file is to document an interface which
 //		any device with a bus, whether it be implemented over a UART,
@@ -22,10 +22,10 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2017, Gisselquist Technology, LLC
+// Copyright (C) 2019, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //

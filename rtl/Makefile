@@ -5,7 +5,8 @@
 ## Project:	ZipSTORM-MX, an iCE40 ZipCPU demonstration project
 ##
 ## Purpose:	This makefile builds both the final bit file for loading, as
-##		well as a verilator simulation of the entire icozip project.
+##		well as a verilator simulation of the entire ZipSTORM-mx
+##	project.
 ##
 ## Creator:	Dan Gisselquist, Ph.D.
 ##		Gisselquist Technology, LLC
@@ -115,10 +116,6 @@ $(VDIRFB)/V%__ALL.a: $(VDIRFB)/V%.mk
 	$(SUBMAKE) V$*.mk
 
 #
-#
-#
-.PHONY: bin
-bin: icozip.bin
 #
 #
 $(JSON): toplevel.v $(VFLIST)

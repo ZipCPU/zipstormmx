@@ -2,7 +2,7 @@
 //
 // Filename: 	wbsdram.v
 //
-// Project:	XuLA2-LX25 SoC based upon the ZipCPU
+// Project:	ZipSTORM-MX, an iCE40 ZipCPU demonstration project
 //
 // Purpose:	Provide 32-bit wishbone access to the SDRAM memory on a XuLA2
 //		LX-25 board.  Specifically, on each access, the controller will
@@ -22,10 +22,10 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2017, Gisselquist Technology, LLC
+// Copyright (C) 2019, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //

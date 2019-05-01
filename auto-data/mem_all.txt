@@ -2,7 +2,7 @@
 ##
 ## Filename: 	mem_sdram_bkram.txt
 ##
-## Project:	ArrowZip, a demonstration of the Arrow MAX1000 FPGA board
+## Project:	ZipSTORM-MX, an iCE40 ZipCPU demonstration project
 ##
 ## Purpose:	Describes a memory model containing nothing more than SDRAM
 ##		and block RAM.  This will be used to create a linker script

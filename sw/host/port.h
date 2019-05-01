@@ -2,7 +2,7 @@
 //
 // Filename:	port.h
 //
-// Project:	ICO Zip, iCE40 ZipCPU demonsrtation project
+// Project:	ZipSTORM-MX, an iCE40 ZipCPU demonstration project
 //
 // Purpose:	Defines the communication parameters necessary for communicating
 //		with the device.
@@ -16,7 +16,7 @@
 // Copyright (C) 2019, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //
@@ -40,7 +40,7 @@
 #ifndef	PORT_H
 #define	PORT_H
 
-#define	FPGAHOST	"localhost"
+#define	FPGAHOST	"jericho"
 #define	FPGAPORT	8374
 
 #define	FPGAOPEN(V) V= new FPGA(new NETCOMMS(FPGAHOST, FPGAPORT))

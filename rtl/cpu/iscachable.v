@@ -42,7 +42,7 @@
 `default_nettype none
 //
 module iscachable(i_addr, o_cachable);
-	localparam		AW = 23;
+	localparam		AW = 18;
 	input	wire	[AW-1:0]	i_addr;
 	output	reg			o_cachable;
 
@@ -54,10 +54,10 @@ module iscachable(i_addr, o_cachable);
 		// Bus master: wb_dio
 		// Bus master: wb_sio
 		// bkram
-		if ((i_addr[22:0] & 23'h780000) == 23'h280000)
+		if ((i_addr[17:0] & 18'h3c000) == 18'h14000)
 			o_cachable = 1'b1;
 		// flash
-		if ((i_addr[22:0] & 23'h400000) == 23'h400000)
+		if ((i_addr[17:0] & 18'h20000) == 18'h20000)
 			o_cachable = 1'b1;
 	end
 

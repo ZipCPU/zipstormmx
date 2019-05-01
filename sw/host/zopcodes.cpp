@@ -2,7 +2,7 @@
 //
 // Filename: 	zopcodes.cpp
 //
-// Project:	ICO Zip, iCE40 ZipCPU demonsrtation project
+// Project:	ZipSTORM-MX, an iCE40 ZipCPU demonstration project
 //
 // Purpose:	A simple program to handle the disassembly and definition
 //		of the various Zip Assembly opcodes.  The primary function
@@ -16,10 +16,10 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2018, Gisselquist Technology, LLC
+// Copyright (C) 2019, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //
@@ -304,6 +304,7 @@ static const ZOPCODE	zip_oplist_raw[] = {
 	{ "LDI", 0x87000000, 0x86000000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(8,16), ZIP_OPUNUSED },
 	// 1.rrrr.111.1.sssssss
 	{ "MOV", 0x87800000, 0x87800000, ZIP_OPUNUSED, ZIP_REGFIELD(27), ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
+	//
 	// 1.rrrr.111.1.rrrrsss
 	// Illegal instruction !!
 	{ "ILLV", 0x80000000, 0x80000000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(32,16), ZIP_OPUNUSED },
@@ -431,12 +432,25 @@ THREEWORD_LJSR(uint32_t iword, uint32_t nxtword) {
 }
 
 static	inline	int
+TWOWORD_CIS_JSR(uint32_t iword) {
+	// MOV 2(PC) | LOD (PC),PC
+	//
+	// 1.0000.111.1.1111.010
+	//			1.1111.100.1.1111.000
+	if (iword == 0x87fafcf8)
+		return 1;
+	return 0;
+}
+
+static	inline	int
 CIS_JSR(uint32_t iword __attribute__((unused)) ) {
-	// MOV 1(PC) | LOD (PC),PC
+	if (TWOWORD_CIS_JSR(iword))
+		return 1;
+	// MOV 1(PC) | MOV Rx,PC
 	//
 	// 1.0000.111.1.1111.001
-	//			1.1111.100.1.1111.000
-	if (iword == 0x87f9fcf8)
+	//			1.1111.111.1.xxxx.000
+	if ((iword&0xffffff87) == 0x87f9ff80)
 		return 1;
 	// There is no code for this without CIS_OP_UNDER_TEST
 	return 0;
@@ -492,6 +506,7 @@ zip_sbits(const long val, const int bits) {
 		r |= (-1l << bits);
 	return r;
 }
+
 static unsigned long
 zip_ubits(const long val, const int bits) {
 	unsigned long r = val & ((1l<<bits)-1);
@@ -525,6 +540,13 @@ zipi_to_halfstring(const uint32_t addr, const ZIPI ins, char *line, const ZOPCOD
 		sprintf(line, "%s0x%08x", line, ref);
 		sprintf(line, "%s,%s", line, zip_regstr[dv]);
 
+		return;
+	} else if (TWOWORD_CIS_JSR(ins)) {
+		sprintf(line, "%-11s", "LJSR");
+		return;
+	} else if (CIS_JSR(ins)) {
+		int ra = zip_getbits(ins, ZIP_REGFIELD(3));
+		sprintf(line, "%-11s%s", "JSR", zip_regstr[ra]);
 		return;
 	}
 
@@ -647,7 +669,7 @@ void
 zipi_to_double_string(const uint32_t addr, const ZIPI ins, char *la, char *lb) {
 	zipi_to_halfstring(addr, ins, la, zip_oplist);
 	if (lb) {
-		if (ins & 0x80000000) {
+		if ((ins & 0x80000000)&&(!CIS_JSR(ins))) {
 			zipi_to_halfstring(addr, ins, lb, zip_opbottomlist);
 		} else lb[0] = '\0';
 	}

@@ -2,7 +2,7 @@
 ##
 ## Filename: 	zipbones.txt
 ##
-## Project:	ICO Zip, iCE40 ZipCPU demonsrtation project
+## Project:	ZipSTORM-MX, an iCE40 ZipCPU demonstration project
 ##
 ## Purpose:	To describe what needs to be done to make the ZipCPU a part
 ##		of a main .v file.  This Wishbone Master description
@@ -14,7 +14,7 @@
 ##
 ################################################################################
 ##
-## Copyright (C) 2017-2019, Gisselquist Technology, LLC
+## Copyright (C) 2019, Gisselquist Technology, LLC
 ##
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of  the GNU General Public License as published
@@ -174,7 +174,7 @@
 #ifdef	OPT_PIPELINED
 #define	cpu_alu_pc	CPUVAR(_GEN_ALU_PC__DOT__r_alu_pc)
 #else
-#define	cpu_alu_pc	CPUVAR(_op_pc)
+#define	cpu_alu_pc	CPUVAR(_dcd_pc)
 #endif
 #ifdef	OPT_CIS
 #define	cpu_alu_phase	CPUVAR(_GEN_ALU_PHASE__DOT__r_alu_phase)

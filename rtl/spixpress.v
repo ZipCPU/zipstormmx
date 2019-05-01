@@ -2,7 +2,7 @@
 //
 // Filename: 	spixpress.v
 //
-// Project:	ICO Zip, iCE40 ZipCPU demonsrtation project
+// Project:	ZipSTORM-MX, an iCE40 ZipCPU demonstration project
 //
 // Purpose:	This module is intended to be a low logic flash controller.
 // 		It uses the 8'h03 read command from the flash, and so it
@@ -49,10 +49,10 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2018, Gisselquist Technology, LLC
+// Copyright (C) 2019, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //
@@ -79,6 +79,8 @@ module	spixpress(i_clk, i_reset,
 		i_wb_cyc, i_wb_stb, i_cfg_stb, i_wb_we, i_wb_addr, i_wb_data,
 			o_wb_stall, o_wb_ack, o_wb_data,
 		o_spi_cs_n, o_spi_sck, o_spi_mosi, i_spi_miso);
+	parameter	LGSZ=19;
+	localparam	AW=LGSZ-2;
 	//
 	// OPT_PIPE allows successive, sequential, transactions to
 	// incrementing addresses without requiring a new address to be sent.
@@ -99,7 +101,7 @@ module	spixpress(i_clk, i_reset,
 	input	wire		i_clk, i_reset;
 	//
 	input	wire		i_wb_cyc, i_wb_stb, i_cfg_stb, i_wb_we;
-	input	wire	[21:0]	i_wb_addr;
+	input	wire	[AW-1:0]	i_wb_addr;
 	input	wire	[31:0]	i_wb_data;
 	output	reg		o_wb_stall, o_wb_ack;
 	output	reg	[31:0]	o_wb_data;
@@ -114,7 +116,7 @@ module	spixpress(i_clk, i_reset,
 	reg	[6:0]	ack_delay;
 	reg		actual_sck;
 
-	wire	[21:0]	next_addr;
+	wire	[(AW-1):0]	next_addr;
 
 	wire	bus_request, next_request, user_request;
 
@@ -147,8 +149,10 @@ module	spixpress(i_clk, i_reset,
 	initial	wdata_pipe = 0;
 	always @(posedge i_clk)
 	if (!o_wb_stall)
-		wdata_pipe[23:0] <= { i_wb_addr[21:0], 2'b00 };
-	else
+	begin
+		wdata_pipe[23:0] <= 0;
+		wdata_pipe[(AW+1):2] <= i_wb_addr;
+	end else
 		wdata_pipe[23:0] <= { wdata_pipe[22:0], 1'b0 };
 
 	always @(posedge i_clk)
@@ -262,7 +266,7 @@ module	spixpress(i_clk, i_reset,
 
 	generate if (OPT_PIPE)
 	begin
-		reg	[21:0]	r_next_addr;
+		reg	[(AW-1):0]	r_next_addr;
 		always @(posedge i_clk)
 		if (!o_wb_stall)
 			r_next_addr <= i_wb_addr + 1'b1;
@@ -322,7 +326,7 @@ module	spixpress(i_clk, i_reset,
 	localparam	F_LGDEPTH = 7;
 	wire	[F_LGDEPTH-1:0]	f_nreqs, f_nacks, f_outstanding;
 
-	fwb_slave #( .AW(22), .F_MAX_STALL(7'd66), .F_MAX_ACK_DELAY(7'd66),
+	fwb_slave #( .AW(AW), .F_MAX_STALL(7'd66), .F_MAX_ACK_DELAY(7'd66),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_REQUESTS((OPT_PIPE) ? 0 : 1'b1),
 			.F_OPT_MINCLOCK_DELAY(1'b1)
@@ -454,11 +458,11 @@ module	spixpress(i_clk, i_reset,
 
 `endif
 `ifdef	VERIFIC
-	reg	[21:0]	f_last_addr, f_next_addr;
+	reg	[(AW-1):0]	f_last_addr, f_next_addr;
 
 	always @(posedge i_clk)
 	if (bus_request)
-		f_last_addr <= i_wb_addr[21:0];
+		f_last_addr <= i_wb_addr;
 
 	always @(*)
 		f_next_addr <= f_last_addr + 1'b1;

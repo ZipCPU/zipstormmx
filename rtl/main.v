@@ -96,10 +96,10 @@ module	main(i_clk, i_reset,
 	//
 	// A 32-bit address indicating where the ZipCPU should start running
 	// from
-	localparam	RESET_ADDRESS = 16777216;
+	localparam	RESET_ADDRESS = 524288;
 	//
 	// The number of valid bits on the bus
-	localparam	ZIP_ADDRESS_WIDTH = 23; // Zip-CPU address width
+	localparam	ZIP_ADDRESS_WIDTH = 18; // Zip-CPU address width
 	//
 	// ZIP_START_HALTED
 	//
@@ -170,7 +170,7 @@ module	main(i_clk, i_reset,
 	// Bus arbiter's internal lines
 	wire		hb_dwbi_cyc, hb_dwbi_stb, hb_dwbi_we,
 			hb_dwbi_ack, hb_dwbi_stall, hb_dwbi_err;
-	wire	[(23-1):0]	hb_dwbi_addr;
+	wire	[(18-1):0]	hb_dwbi_addr;
 	wire	[(32-1):0]	hb_dwbi_odata, hb_dwbi_idata;
 	wire	[(4-1):0]	hb_dwbi_sel;
 	reg	[31:0]	r_pwrcount_data;
@@ -179,7 +179,7 @@ module	main(i_clk, i_reset,
 	wire	[31:0]	zip_debug;
 	wire		zip_trigger;
 	wire		zip_halted;
-	reg	[23-1:0]	r_buserr_addr;
+	reg	[18-1:0]	r_buserr_addr;
 	// UART interface
 	wire	[7:0]	hb_rx_data, hb_tx_data;
 	wire		hb_rx_stb;
@@ -223,7 +223,7 @@ module	main(i_clk, i_reset,
 	wire		wb_cyc, wb_stb, wb_we, wb_stall, wb_err,
 			wb_none_sel;
 	reg		wb_many_ack;
-	wire	[22:0]	wb_addr;
+	wire	[17:0]	wb_addr;
 	wire	[31:0]	wb_data;
 	reg	[31:0]	wb_idata;
 	wire	[3:0]	wb_sel;
@@ -286,7 +286,7 @@ module	main(i_clk, i_reset,
 	wire		hb_cyc, hb_stb, hb_we, hb_stall, hb_err,
 			hb_none_sel;
 	reg		hb_many_ack;
-	wire	[23:0]	hb_addr;
+	wire	[18:0]	hb_addr;
 	wire	[31:0]	hb_data;
 	reg	[31:0]	hb_idata;
 	wire	[3:0]	hb_sel;
@@ -305,7 +305,7 @@ module	main(i_clk, i_reset,
 	wire		zip_cyc, zip_stb, zip_we, zip_stall, zip_err,
 			zip_none_sel;
 	reg		zip_many_ack;
-	wire	[22:0]	zip_addr;
+	wire	[17:0]	zip_addr;
 	wire	[31:0]	zip_data;
 	reg	[31:0]	zip_idata;
 	wire	[3:0]	zip_sel;
@@ -324,26 +324,26 @@ module	main(i_clk, i_reset,
 	//
 	// Select lines for bus: wb
 	//
-	// Address width: 23
+	// Address width: 18
 	// Data width:    32
 	//
 	//
 	
-	assign	      buserr_sel = ((wb_sio_sel)&&(wb_addr[ 2: 0] ==  3'h0));  // 0x000000
-	assign	      buspic_sel = ((wb_sio_sel)&&(wb_addr[ 2: 0] ==  3'h1));  // 0x000004
-	assign	    pwrcount_sel = ((wb_sio_sel)&&(wb_addr[ 2: 0] ==  3'h2));  // 0x000008
-	assign	        spio_sel = ((wb_sio_sel)&&(wb_addr[ 2: 0] ==  3'h3));  // 0x00000c
-	assign	     version_sel = ((wb_sio_sel)&&(wb_addr[ 2: 0] ==  3'h4));  // 0x000010
-	assign	    bustimer_sel = ((wb_dio_sel)&&((wb_addr[ 0: 0] &  1'h1) ==  1'h0));  // 0x000000
-	assign	    watchdog_sel = ((wb_dio_sel)&&((wb_addr[ 0: 0] &  1'h1) ==  1'h1));  // 0x000004
-	assign	   flash_cfg_sel = ((wb_addr[22:19] &  4'hf) ==  4'h1); // 0x200000
-	assign	      wb_dio_sel = ((wb_addr[22:19] &  4'hf) ==  4'h2); // 0x400000 - 0x400007
+	assign	      buserr_sel = ((wb_sio_sel)&&(wb_addr[ 2: 0] ==  3'h0));  // 0x00000
+	assign	      buspic_sel = ((wb_sio_sel)&&(wb_addr[ 2: 0] ==  3'h1));  // 0x00004
+	assign	    pwrcount_sel = ((wb_sio_sel)&&(wb_addr[ 2: 0] ==  3'h2));  // 0x00008
+	assign	        spio_sel = ((wb_sio_sel)&&(wb_addr[ 2: 0] ==  3'h3));  // 0x0000c
+	assign	     version_sel = ((wb_sio_sel)&&(wb_addr[ 2: 0] ==  3'h4));  // 0x00010
+	assign	    bustimer_sel = ((wb_dio_sel)&&((wb_addr[ 0: 0] &  1'h1) ==  1'h0));  // 0x00000
+	assign	    watchdog_sel = ((wb_dio_sel)&&((wb_addr[ 0: 0] &  1'h1) ==  1'h1));  // 0x00004
+	assign	   flash_cfg_sel = ((wb_addr[17:14] &  4'hf) ==  4'h1); // 0x10000
+	assign	      wb_dio_sel = ((wb_addr[17:14] &  4'hf) ==  4'h2); // 0x20000 - 0x20007
 //x2	Was a master bus as well
-	assign	     console_sel = ((wb_addr[22:19] &  4'hf) ==  4'h3); // 0x600000 - 0x60000f
-	assign	      wb_sio_sel = ((wb_addr[22:19] &  4'hf) ==  4'h4); // 0x800000 - 0x80001f
+	assign	     console_sel = ((wb_addr[17:14] &  4'hf) ==  4'h3); // 0x30000 - 0x3000f
+	assign	      wb_sio_sel = ((wb_addr[17:14] &  4'hf) ==  4'h4); // 0x40000 - 0x4001f
 //x2	Was a master bus as well
-	assign	       bkram_sel = ((wb_addr[22:19] &  4'hf) ==  4'h5); // 0xa00000 - 0xa01fff
-	assign	       flash_sel = ((wb_addr[22:19] &  4'h8) ==  4'h8); // 0x1000000 - 0x1ffffff
+	assign	       bkram_sel = ((wb_addr[17:14] &  4'hf) ==  4'h5); // 0x50000 - 0x51fff
+	assign	       flash_sel = ((wb_addr[17:14] &  4'h8) ==  4'h8); // 0x80000 - 0xfffff
 	//
 
 	//
@@ -351,14 +351,14 @@ module	main(i_clk, i_reset,
 	//
 	// Select lines for bus: hb
 	//
-	// Address width: 24
+	// Address width: 19
 	// Data width:    32
 	//
 	//
 	
-	assign	      hb_dwb_sel = ((hb_addr[23:23] &  1'h1) ==  1'h0); // 0x000000 - 0x1ffffff
+	assign	      hb_dwb_sel = ((hb_addr[18:18] &  1'h1) ==  1'h0); // 0x00000 - 0xfffff
 //x2	Was a master bus as well
-	assign	     zip_dbg_sel = ((hb_addr[23:23] &  1'h1) ==  1'h1); // 0x2000000 - 0x2000007
+	assign	     zip_dbg_sel = ((hb_addr[18:18] &  1'h1) ==  1'h1); // 0x100000 - 0x100007
 	//
 
 	//
@@ -366,7 +366,7 @@ module	main(i_clk, i_reset,
 	//
 	// Select lines for bus: zip
 	//
-	// Address width: 23
+	// Address width: 18
 	// Data width:    32
 	//
 	//
@@ -508,19 +508,19 @@ module	main(i_clk, i_reset,
 	reg [2:0]	r_wb_bus_select;
 	always	@(posedge i_clk)
 	if (wb_stb && ! wb_stall)
-		casez(wb_addr[22:19])
-			// 01e00000 & 00200000, flash_cfg
-			4'b0_001: r_wb_bus_select <= 3'd0;
-			// 01e00000 & 00400000, wb_dio
-			4'b0_010: r_wb_bus_select <= 3'd1;
-			// 01e00000 & 00600000, console
-			4'b0_011: r_wb_bus_select <= 3'd2;
-			// 01e00000 & 00800000, wb_sio
-			4'b0_100: r_wb_bus_select <= 3'd3;
-			// 01e00000 & 00a00000, bkram
-			4'b0_101: r_wb_bus_select <= 3'd4;
-			// 01000000 & 01000000, flash
-			4'b1_???: r_wb_bus_select <= 3'd5;
+		casez(wb_addr[17:14])
+			// 000f0000 & 00010000, flash_cfg
+			4'b0001: r_wb_bus_select <= 3'd0;
+			// 000f0000 & 00020000, wb_dio
+			4'b0010: r_wb_bus_select <= 3'd1;
+			// 000f0000 & 00030000, console
+			4'b0011: r_wb_bus_select <= 3'd2;
+			// 000f0000 & 00040000, wb_sio
+			4'b0100: r_wb_bus_select <= 3'd3;
+			// 000f0000 & 00050000, bkram
+			4'b0101: r_wb_bus_select <= 3'd4;
+			// 00080000 & 00080000, flash
+			4'b1???: r_wb_bus_select <= 3'd5;
 			default: begin end
 		endcase
 
@@ -753,7 +753,7 @@ module	main(i_clk, i_reset,
 	//
 	//
 	// Clock speed = 25000000 Hz
-	wbpriarbiter #(32,23)	bus_arbiter(i_clk,
+	wbpriarbiter #(32,18)	bus_arbiter(i_clk,
 		// The Zip CPU bus master --- gets the priority slot
 		zip_cyc, zip_stb, zip_we, zip_addr, zip_data, zip_sel,
 			zip_dwb_ack, zip_dwb_stall, zip_dwb_err,
@@ -761,7 +761,7 @@ module	main(i_clk, i_reset,
 		(hb_cyc),
 			(hb_stb)&&(hb_dwb_sel),
 			hb_we,
-			hb_addr[(23-1):0],
+			hb_addr[(18-1):0],
 			hb_data, hb_sel,
 			hb_dwb_ack, hb_dwb_stall, hb_dwb_err,
 		// Common bus returns
@@ -775,7 +775,7 @@ module	main(i_clk, i_reset,
 	assign	hb_dwbi_cyc   = hb_cyc;
 	assign	hb_dwbi_stb   = hb_stb;
 	assign	hb_dwbi_we    = hb_we;
-	assign	hb_dwbi_addr  = hb_addr[(23-1):0];
+	assign	hb_dwbi_addr  = hb_addr[(18-1):0];
 	assign	hb_dwbi_odata = hb_data;
 	assign	hb_dwbi_sel   = hb_sel;
 	assign	hb_dwb_ack    = hb_dwbi_ack;
@@ -790,7 +790,7 @@ module	main(i_clk, i_reset,
 `endif
 `endif
 `ifdef	BUS_DELAY_NEEDED
-	busdelay #(23)	hb_dwbi_delay(i_clk, i_reset,
+	busdelay #(18)	hb_dwbi_delay(i_clk, i_reset,
 		hb_dwbi_cyc, hb_dwbi_stb, hb_dwbi_we, hb_dwbi_addr, hb_dwbi_odata, hb_dwbi_sel,
 			hb_dwbi_ack, hb_dwbi_stall, hb_dwbi_idata, hb_dwbi_err,
 		wb_cyc, wb_stb, wb_we, wb_addr, wb_data, wb_sel,
@@ -859,14 +859,14 @@ module	main(i_clk, i_reset,
 	always @(posedge i_clk)
 		if (wb_err)
 			r_buserr_addr <= wb_addr;
-	assign	buserr_data = { {(32-2-23){1'b0}},
+	assign	buserr_data = { {(32-2-18){1'b0}},
 			r_buserr_addr, 2'b00 };
 `ifdef	FLASH_ACCESS
 	spixpress flashi(i_clk, i_reset,
 			(wb_cyc),
 				(wb_stb)&&(flash_sel),
 				(wb_stb)&&(flash_cfg_sel), wb_we,
-				wb_addr[(24-3):0],
+				wb_addr[(19-3):0],
 				wb_data,
 			flash_stall, flash_ack, flash_data,
 			o_spi_cs_n, o_spi_sck, o_spi_mosi, i_spi_miso);
@@ -911,7 +911,7 @@ module	main(i_clk, i_reset,
 			//
 			w_console_tx_stb, w_console_tx_data, w_console_busy,
 			w_console_rx_stb, w_console_rx_data);
-	assign	hb_addr= hb_tmp_addr[(24-1):0];
+	assign	hb_addr= hb_tmp_addr[(19-1):0];
 `else	// WBUBUS_MASTER
 
 	// In the case that nothing drives the hb bus ...

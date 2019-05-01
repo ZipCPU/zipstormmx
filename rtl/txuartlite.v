@@ -2,7 +2,7 @@
 //
 // Filename: 	txuartlite.v
 //
-// Project:	wbuart32, a full featured UART with simulator
+// Project:	ZipSTORM-MX, an iCE40 ZipCPU demonstration project
 //
 // Purpose:	Transmit outputs over a single UART line.  This particular UART
 //		implementation has been extremely simplified: it does not handle
@@ -25,10 +25,10 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2019, Gisselquist Technology, LLC
+// Copyright (C) 2019, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //

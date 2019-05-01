@@ -2,7 +2,7 @@
 ##
 ## Filename:	sw/host/Makefile
 ##
-## Project:	ICO Zip, iCE40 ZipCPU demonsrtation project
+## Project:	ZipSTORM-MX, an iCE40 ZipCPU demonstration project
 ##
 ## Purpose:	
 ## Targets:	
@@ -12,10 +12,10 @@
 ##
 ################################################################################
 ##
-## Copyright (C) 2015-2018, Gisselquist Technology, LLC
+## Copyright (C) 2019, Gisselquist Technology, LLC
 ##
 ## This program is free software (firmware): you can redistribute it and/or
-## modify it under the terms of  the GNU General Public License as published
+## modify it under the terms of the GNU General Public License as published
 ## by the Free Software Foundation, either version 3 of the License, or (at
 ## your option) any later version.
 ##
@@ -77,8 +77,8 @@ wbregs: $(OBJDIR)/wbregs.o $(BUSOBJS)
 	$(CXX) $(CFLAGS) $^ $(LIBS) -o $@
 dumpflash: $(OBJDIR)/dumpflash.o $(BUSOBJS)
 	$(CXX) $(CFLAGS) $^ $(LIBS) -o $@
-flashid: $(OBJDIR)/flashid.o $(OBJDIR)/flashdrvr.o $(BUSOBJS)
-	$(CXX) $(CFLAGS) $^ $(LIBS) -o $@
+# flashid: $(OBJDIR)/flashid.o $(OBJDIR)/flashdrvr.o $(BUSOBJS)
+#	$(CXX) $(CFLAGS) $^ $(LIBS) -o $@
 divutb: $(OBJDIR)/divutb.o
 	$(CXX) $(CFLAGS) $^ -o $@
 
