@@ -41,6 +41,8 @@
 ##
 BKRAM := memdev.v
 
+HBBUSD := hexbus
+HBBUS  := $(addprefix $(HBBUSD)/,hbconsole.v hbdechex.v hbdeword.v hbexec.v hbgenhex.v hbidle.v hbints.v hbnewline.v hbpack.v console.v)
 BUSPICD := cpu
 BUSPIC  := $(addprefix $(BUSPICD)/,icontrol.v)
 BUSDLYD := cpu
@@ -51,9 +53,7 @@ HBUART := txuartlite.v rxuartlite.v ufifo.v
 
 FLASH := spixpress.v oclkddr.v
 
-HBBUSD := hexbus
-HBBUS  := $(addprefix $(HBBUSD)/,hbconsole.v hbdechex.v hbdeword.v hbexec.v hbgenhex.v hbidle.v hbints.v hbnewline.v hbpack.v console.v)
 SPIOD := .
 SPIO  := $(addprefix $(SPIOD)/,spio.v debouncer.v)
-VFLIST := main.v  $(BKRAM) $(BUSPIC) $(BUSDLY) $(ZIPCPU) $(HBUART) $(FLASH) $(HBBUS) $(SPIO)
-AUTOVDIRS :=  -y cpu -y hexbus -y .
+VFLIST := main.v  $(BKRAM) $(HBBUS) $(BUSPIC) $(BUSDLY) $(ZIPCPU) $(HBUART) $(FLASH) $(SPIO)
+AUTOVDIRS :=  -y hexbus -y cpu -y .

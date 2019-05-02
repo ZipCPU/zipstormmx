@@ -61,12 +61,6 @@
 #endif // INCLUDE_ZIPCPU
 
 
-#define BUSPIC(X) (1<<X)
-
-
-#define	CLKFREQHZ	25000000
-
-
 typedef struct  CONSOLE_S {
 	unsigned	u_setup;
 	unsigned	u_fifo;
@@ -75,22 +69,33 @@ typedef struct  CONSOLE_S {
 
 
 
+#define BUSPIC(X) (1<<X)
+
+
+#define	CLKFREQHZ	25000000
+
+
 
 
 #ifdef	BKRAM_ACCESS
 #define	_BOARD_HAS_BKRAM
 extern char	_bkram[0x00002000];
 #endif	// BKRAM_ACCESS
+#ifdef	BUSCONSOLE_ACCESS
+#define	_BOARD_HAS_BUSCONSOLE
+static volatile CONSOLE *const _uart = ((CONSOLE *)0x00030000);
+#endif	// BUSCONSOLE_ACCESS
 #ifdef	BUSPIC_ACCESS
 #define	_BOARD_HAS_BUSPIC
-static volatile unsigned *const _buspic = ((unsigned *)0x00040004);
+static volatile unsigned *const _buspic = ((unsigned *)0x00040008);
 #endif	// BUSPIC_ACCESS
 #define	_BOARD_HAS_BUSERR
-static volatile unsigned *const _buserr = ((unsigned *)262144);
+static volatile unsigned *const _buserr = ((unsigned *)262148);
 #ifdef	FLASH_ACCESS
 #define	_BOARD_HAS_FLASH
 extern char _flash[0x00080000];
 #endif	// FLASH_ACCESS
+#define	_BOARD_HAS_BUILDTIME
 #ifdef	BUSTIMER_ACCESS
 #define	_BOARD_HAS_BUSTIMER
 static volatile unsigned *const _bustimer = ((unsigned *)0x00020000);
@@ -100,13 +105,9 @@ static volatile unsigned *const _bustimer = ((unsigned *)0x00020000);
 static volatile unsigned * const _flashcfg = ((unsigned *)(0x00010000));
 #endif	// FLASHCFG_ACCESS
 #define	_BOARD_HAS_VERSION
-#ifdef	BUSCONSOLE_ACCESS
-#define	_BOARD_HAS_BUSCONSOLE
-static volatile CONSOLE *const _uart = ((CONSOLE *)0x00030000);
-#endif	// BUSCONSOLE_ACCESS
 #ifdef	SPIO_ACCESS
 #define	_BOARD_HAS_SPIO
-static volatile unsigned *const _spio = ((unsigned *)262156);
+static volatile unsigned *const _spio = ((unsigned *)262160);
 #endif	// SPIO_ACCESS
 //
 // Interrupt assignments (2 PICs)
@@ -115,10 +116,10 @@ static volatile unsigned *const _spio = ((unsigned *)262156);
 #define	CPU_RESET_RESET	CPU_RESET(0)
 #define	CPU_RESET_WATCHDOG	CPU_RESET(1)
 // PIC: buspic
-#define	BUSPIC_BUSTIMER	BUSPIC(0)
-#define	BUSPIC_UARTTXF	BUSPIC(1)
-#define	BUSPIC_UARTRXF	BUSPIC(2)
-#define	BUSPIC_UARTTX	BUSPIC(3)
-#define	BUSPIC_UARTRX	BUSPIC(4)
+#define	BUSPIC_UARTTXF	BUSPIC(0)
+#define	BUSPIC_UARTRXF	BUSPIC(1)
+#define	BUSPIC_UARTTX	BUSPIC(2)
+#define	BUSPIC_UARTRX	BUSPIC(3)
+#define	BUSPIC_BUSTIMER	BUSPIC(4)
 #define	BUSPIC_SPIO	BUSPIC(5)
 #endif	// BOARD_H

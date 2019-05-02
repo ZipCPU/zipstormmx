@@ -124,7 +124,7 @@ _@$(PREFIX)=ORIGIN(@$(PREFIX));
 		m_core->i_spi_miso = m_@$(MEM.NAME)->simtick(
 			m_core->o_spi_cs_n,
 			m_core->o_spi_sck,
-			m_core->o_spi_mosi);
+			m_core->o_spi_mosi, 0);
 		m_core->i_spi_miso = (m_core->i_spi_miso & 2)?1:0;
 #endif // @$(ACCESS)
 @SIM.LOAD=

@@ -40,6 +40,8 @@
 .PHONY: all
 all:	check-install datestamp autodata rtl sw sim # bench
 #
+SOCDIR:=rtl
+#
 # Could also depend upon load, if desired, but not necessary
 SIM   := `find sim -name Makefile` `find sim -name "*.cpp"` `find sim -name "*.h"` `find sim -name "*.c"`
 RTL   := `find rtl -name "*.v"` `find rtl -name Makefile`
@@ -113,8 +115,8 @@ check-icepack:
 #
 .PHONY: datestamp
 datestamp: check-perl
-	@bash -c 'if [ ! -e $(YYMMDD)-build.v ]; then rm -f 20??????-build.v; perl mkdatev.pl > $(YYMMDD)-build.v; rm -f rtl/builddate.v; fi'
-	@bash -c 'if [ ! -e rtl/builddate.v ]; then cp $(YYMMDD)-build.v rtl/builddate.v; fi'
+	perl mkdatev.pl > $(YYMMDD)-build.v
+	cd $(SOCDIR); cp ../$(YYMMDD)-build.v builddate.v
 
 #
 #
@@ -177,6 +179,14 @@ sw: sw-host sw-zlib sw-board
 
 #
 #
+# Build the host support software
+#
+.PHONY: sw-host
+sw-host:
+	$(SUBMAKE) sw/host
+
+#
+#
 # Build the hardware specific newlib library
 #
 .PHONY: sw-zlib
@@ -193,15 +203,18 @@ sw-board: check-zip-gcc sw-zlib
 
 #
 #
-# Build the host support software
+# Run "Hello World", and ... see if this all works
 #
-.PHONY: sw-host
-sw-host: rtl check-gpp
-	$(SUBMAKE) sw/host
+.PHONY: hello
+hello: sim sw
+	$(SIMDIR)/main_tb $(ZIPSW)/hello
 
-# .PHONY: sw-board
-# sw-board: autodata rtl
-	# $(SUBMAKE) sw/board
+.PHONY: cputest
+cputest: sim sw
+	$(SIMDIR)/main_tb $(ZIPSW)/cputest
+
+# .PHONY: test
+# test: hello
 
 #
 #

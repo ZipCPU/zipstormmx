@@ -58,10 +58,10 @@
 // And then for the independent peripherals
 `define	WATCHDOG_ACCESS
 `define	BKRAM_ACCESS
+`define	BUSCONSOLE_ACCESS
 `define	BUSPIC_ACCESS
 `define	FLASH_ACCESS
 `define	BUSTIMER_ACCESS
-`define	BUSCONSOLE_ACCESS
 `define	SPIO_ACCESS
 //
 //
@@ -174,11 +174,11 @@ module	main(i_clk, i_reset,
 	//
 	wire	i_reset;	// watchdog.INT.RESET.WIRE
 	wire	watchdog_reset;	// watchdog.INT.WATCHDOG.WIRE
-	wire	bustimer_int;	// bustimer.INT.BUSTIMER.WIRE
 	wire	uarttxf_int;	// console.INT.UARTTXF.WIRE
 	wire	uartrxf_int;	// console.INT.UARTRXF.WIRE
 	wire	uarttx_int;	// console.INT.UARTTX.WIRE
 	wire	uartrx_int;	// console.INT.UARTRX.WIRE
+	wire	bustimer_int;	// bustimer.INT.BUSTIMER.WIRE
 	wire	spio_int;	// spio.INT.SPIO.WIRE
 
 
@@ -190,6 +190,9 @@ module	main(i_clk, i_reset,
 	//
 // Looking for string: MAIN.DEFNS
 	reg	cpu_reset;
+	// Console definitions
+	wire	w_console_rx_stb, w_console_tx_stb, w_console_busy;
+	wire	[6:0]	w_console_rx_data, w_console_tx_data;
 	wire	bus_interrupt;
 	// Bus arbiter's internal lines
 	wire		hb_dwbi_cyc, hb_dwbi_stb, hb_dwbi_we,
@@ -222,10 +225,9 @@ module	main(i_clk, i_reset,
 	wire		zip_dbg_ack, zip_dbg_stall;
 	wire	[31:0]	zip_dbg_data;
 `endif
+// BUILDTIME doesnt need to include builddate.v a second time
+// `include "builddate.v"
 `include "builddate.v"
-	// Console definitions
-	wire	w_console_rx_stb, w_console_tx_stb, w_console_busy;
-	wire	[6:0]	w_console_rx_data, w_console_tx_data;
 
 
 	//
@@ -252,6 +254,10 @@ module	main(i_clk, i_reset,
 	reg	[31:0]	wb_idata;
 	wire	[3:0]	wb_sel;
 	reg		wb_ack;
+
+	// Wishbone slave definitions for bus wb(SIO), slave buildtime
+	wire		buildtime_sel, buildtime_ack, buildtime_stall;
+	wire	[31:0]	buildtime_data;
 
 	// Wishbone slave definitions for bus wb(SIO), slave buserr
 	wire		buserr_sel, buserr_ack, buserr_stall;
@@ -353,11 +359,12 @@ module	main(i_clk, i_reset,
 	//
 	//
 	
-	assign	      buserr_sel = ((wb_sio_sel)&&(wb_addr[ 2: 0] ==  3'h0));  // 0x00000
-	assign	      buspic_sel = ((wb_sio_sel)&&(wb_addr[ 2: 0] ==  3'h1));  // 0x00004
-	assign	    pwrcount_sel = ((wb_sio_sel)&&(wb_addr[ 2: 0] ==  3'h2));  // 0x00008
-	assign	        spio_sel = ((wb_sio_sel)&&(wb_addr[ 2: 0] ==  3'h3));  // 0x0000c
-	assign	     version_sel = ((wb_sio_sel)&&(wb_addr[ 2: 0] ==  3'h4));  // 0x00010
+	assign	   buildtime_sel = ((wb_sio_sel)&&(wb_addr[ 2: 0] ==  3'h0));  // 0x00000
+	assign	      buserr_sel = ((wb_sio_sel)&&(wb_addr[ 2: 0] ==  3'h1));  // 0x00004
+	assign	      buspic_sel = ((wb_sio_sel)&&(wb_addr[ 2: 0] ==  3'h2));  // 0x00008
+	assign	    pwrcount_sel = ((wb_sio_sel)&&(wb_addr[ 2: 0] ==  3'h3));  // 0x0000c
+	assign	        spio_sel = ((wb_sio_sel)&&(wb_addr[ 2: 0] ==  3'h4));  // 0x00010
+	assign	     version_sel = ((wb_sio_sel)&&(wb_addr[ 2: 0] ==  3'h5));  // 0x00014
 	assign	    bustimer_sel = ((wb_dio_sel)&&((wb_addr[ 0: 0] &  1'h1) ==  1'h0));  // 0x00000
 	assign	    watchdog_sel = ((wb_dio_sel)&&((wb_addr[ 0: 0] &  1'h1) ==  1'h1));  // 0x00004
 	assign	    flashcfg_sel = ((wb_addr[17:14] &  4'hf) ==  4'h1); // 0x10000
@@ -453,10 +460,11 @@ module	main(i_clk, i_reset,
 
 	always	@(posedge i_clk)
 	casez( wb_addr[2:0] )
-		3'h0: r_wb_sio_data <= buserr_data;
-		3'h1: r_wb_sio_data <= buspic_data;
-		3'h2: r_wb_sio_data <= pwrcount_data;
-		3'h3: r_wb_sio_data <= spio_data;
+		3'h0: r_wb_sio_data <= buildtime_data;
+		3'h1: r_wb_sio_data <= buserr_data;
+		3'h2: r_wb_sio_data <= buspic_data;
+		3'h3: r_wb_sio_data <= pwrcount_data;
+		3'h4: r_wb_sio_data <= spio_data;
 		default: r_wb_sio_data <= version_data;
 	endcase
 	assign	wb_sio_data = r_wb_sio_data;
@@ -694,11 +702,11 @@ module	main(i_clk, i_reset,
 		1'b0,
 		1'b0,
 		spio_int,
+		bustimer_int,
 		uartrx_int,
 		uarttx_int,
 		uartrxf_int,
-		uarttxf_int,
-		bustimer_int
+		uarttxf_int
 	};
 
 
@@ -749,6 +757,29 @@ module	main(i_clk, i_reset,
 	assign	bkram_data  = 0;
 
 `endif	// BKRAM_ACCESS
+
+`ifdef	BUSCONSOLE_ACCESS
+	console consolei(i_clk, 1'b0,
+ 			wb_cyc, (wb_stb)&&(console_sel), wb_we,
+				wb_addr[1:0], wb_data,
+ 			console_ack, console_stall, console_data,
+			w_console_tx_stb, w_console_tx_data, w_console_busy,
+			w_console_rx_stb, w_console_rx_data,
+			uartrx_int, uarttx_int, uartrxf_int, uarttxf_int);
+`else	// BUSCONSOLE_ACCESS
+	assign	w_console_tx_stb  = 1'b0;
+	assign	w_console_tx_data = 7'h7f;
+
+	// In the case that there is no console peripheral responding on the wb bus
+	assign	console_ack   = (wb_stb) && (console_sel);
+	assign	console_stall = 0;
+	assign	console_data  = 0;
+
+	assign	uarttxf_int = 1'b0;	// console.INT.UARTTXF.WIRE
+	assign	uartrxf_int = 1'b0;	// console.INT.UARTRXF.WIRE
+	assign	uarttx_int = 1'b0;	// console.INT.UARTTX.WIRE
+	assign	uartrx_int = 1'b0;	// console.INT.UARTRX.WIRE
+`endif	// BUSCONSOLE_ACCESS
 
 `ifdef	BUSPIC_ACCESS
 	//
@@ -949,6 +980,13 @@ module	main(i_clk, i_reset,
 
 `endif	// WBUBUS_MASTER
 
+`ifdef	VERILATOR
+	assign	buildtime_data = `BUILDTIME ^ 32'h8000_0000;
+`else
+	assign	buildtime_data = `BUILDTIME;
+`endif
+	assign	buildtime_ack = wb_stb && buildtime_sel;
+	assign	buildtime_stall = 1'b0;
 `ifdef	BUSTIMER_ACCESS
 	ziptimer #(.VW(16))
 		bustimeri(i_clk, i_reset, 1'b1,
@@ -983,29 +1021,6 @@ module	main(i_clk, i_reset,
 	assign	version_data = `DATESTAMP;
 	assign	version_ack = 1'b0;
 	assign	version_stall = 1'b0;
-`ifdef	BUSCONSOLE_ACCESS
-	console consolei(i_clk, 1'b0,
- 			wb_cyc, (wb_stb)&&(console_sel), wb_we,
-				wb_addr[1:0], wb_data,
- 			console_ack, console_stall, console_data,
-			w_console_tx_stb, w_console_tx_data, w_console_busy,
-			w_console_rx_stb, w_console_rx_data,
-			uartrx_int, uarttx_int, uartrxf_int, uarttxf_int);
-`else	// BUSCONSOLE_ACCESS
-	assign	w_console_tx_stb  = 1'b0;
-	assign	w_console_tx_data = 7'h7f;
-
-	// In the case that there is no console peripheral responding on the wb bus
-	assign	console_ack   = (wb_stb) && (console_sel);
-	assign	console_stall = 0;
-	assign	console_data  = 0;
-
-	assign	uarttxf_int = 1'b0;	// console.INT.UARTTXF.WIRE
-	assign	uartrxf_int = 1'b0;	// console.INT.UARTRXF.WIRE
-	assign	uarttx_int = 1'b0;	// console.INT.UARTTX.WIRE
-	assign	uartrx_int = 1'b0;	// console.INT.UARTRX.WIRE
-`endif	// BUSCONSOLE_ACCESS
-
 `ifdef	SPIO_ACCESS
 	spio #(.NBTN(2), .NLEDS(4)) spioi(i_clk,
 		wb_cyc, (wb_stb)&&(spio_sel), wb_we, wb_data, wb_sel,
