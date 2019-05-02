@@ -57,6 +57,7 @@
 #include "byteswap.h"
 #include "zipelf.h"
 
+#include "flashsim.h"
 #include "dbluartsim.h"
 //
 // SIM.DEFINES
@@ -120,6 +121,9 @@ public:
 		// as part of the main_tb.cpp function.
 // Looking for string: SIM.DEFNS
 	int	m_cpu_bombed;
+#ifdef	FLASH_ACCESS
+	FLASHSIM	*m_flash;
+#endif // FLASH_ACCESS
 	DBLUARTSIM	*m_hb;
 	MAINTB(void) {
 		// SIM.INIT
@@ -130,6 +134,10 @@ public:
 		//
 		// From zip
 		m_cpu_bombed = 0;
+		// From flash
+#ifdef	FLASH_ACCESS
+	m_flash = new FLASHSIM(FLASHLGLEN);
+#endif // FLASH_ACCESS
 		// From hb
 		m_hb = new DBLUARTSIM();
 		m_hb->setup(25);
@@ -201,6 +209,14 @@ public:
 		}
 #endif	// INCLUDE_ZIPCPU
 
+		// SIM.TICK from flash
+#ifdef  FLASH_ACCESS
+		m_core->i_spi_miso = m_flash->simtick(
+			m_core->o_spi_cs_n,
+			m_core->o_spi_sck,
+			m_core->o_spi_mosi, 0);
+		m_core->i_spi_miso = (m_core->i_spi_miso & 2)?1:0;
+#endif // FLASH_ACCESS
 		// SIM.TICK from hb
 		m_core->i_uart_rx = (*m_hb)(m_core->o_uart_tx);
 	}
@@ -248,6 +264,35 @@ public:
 #else	// BKRAM_ACCESS
 			return false;
 #endif	// BKRAM_ACCESS
+		//
+		// End of components with a SIM.LOAD tag, and a
+		// non-zero number of addresses (NADDR)
+		//
+		}
+
+		//
+		// Loading the flash component
+		//
+		base  = 0x00080000; // in octets
+		adrln = 0x00080000;
+
+		if ((addr >= base)&&(addr < base + adrln)) {
+			// If the start access is in flash
+			start = (addr > base) ? (addr-base) : 0;
+			offset = (start + base) - addr;
+			wlen = (len-offset > adrln - start)
+				? (adrln - start) : len - offset;
+#ifdef	FLASH_ACCESS
+			// FROM flash.SIM.LOAD
+			m_flash->load(start, &buf[offset], wlen);
+			// AUTOFPGA::Now clean up anything else
+			// Was there more to write than we wrote?
+			if (addr + len > base + adrln)
+				return load(base + adrln, &buf[offset+wlen], len-wlen);
+			return true;
+#else	// FLASH_ACCESS
+			return false;
+#endif	// FLASH_ACCESS
 		//
 		// End of components with a SIM.LOAD tag, and a
 		// non-zero number of addresses (NADDR)

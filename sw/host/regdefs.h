@@ -55,6 +55,7 @@
 //
 // Register address definitions, from @REGS.#d
 //
+// FLASH erase/program configuration registers
 #define	R_FLASHCFG      	0x00010000	// 00010000, wbregs names: FLASHCFG
 // The bus timer
 #define	R_BUSTIMER      	0x00020000	// 00020000, wbregs names: BUSTIMER
@@ -125,6 +126,7 @@
 
 
 // @REGDEFS.H.INSERT for peripherals
+
 // Flash memory constants
 #define	SZPAGEB		256
 #define	PGLENB		256
@@ -137,8 +139,6 @@
 #define	SECTOROF(A)	((A) & (-1<<16))
 #define	SUBSECTOROF(A)	((A) & (-1<<12))
 #define	PAGEOF(A)	((A) & (-1<<8))
-
-
 
 // @REGDEFS.H.INSERT from the top level
 typedef	struct {

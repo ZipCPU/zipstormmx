@@ -64,6 +64,30 @@
 `define	BUSCONSOLE_ACCESS
 `define	SPIO_ACCESS
 //
+//
+// The list of those things that have @DEPENDS tags
+//
+//
+// Dependencies are listed within the @DEPENDS tag
+// Values prefixed by a !, yet with no spaces between the ! and the
+// dependency, are ifndef dependencies.  As an example, an
+// an access and depends tag such as:
+//
+// @ACCESS=  THIS_COMPONENT
+// @DEPENDS= MUST_HAVE_A !MUST_NOT_HAVE_B
+//
+// will turn into:
+//
+// `ifdef MUST_HAVE_A
+// `ifndef MUST_NOT_HAVE_B
+// `define THIS_COMPONENT
+// `endif // MUST_NOT_HAVE_B
+// `endif // MUST_HAVE_A
+//
+`ifdef	FLASH_ACCESS
+`define	FLASHCFG_ACCESS
+`endif
+//
 // End of dependency list
 //
 //
@@ -257,9 +281,9 @@ module	main(i_clk, i_reset,
 	wire		watchdog_sel, watchdog_ack, watchdog_stall;
 	wire	[31:0]	watchdog_data;
 
-	// Wishbone slave definitions for bus wb, slave flash_cfg
-	wire		flash_cfg_sel, flash_cfg_ack, flash_cfg_stall;
-	wire	[31:0]	flash_cfg_data;
+	// Wishbone slave definitions for bus wb, slave flashcfg
+	wire		flashcfg_sel, flashcfg_ack, flashcfg_stall;
+	wire	[31:0]	flashcfg_data;
 
 	// Wishbone slave definitions for bus wb, slave wb_dio
 	wire		wb_dio_sel, wb_dio_ack, wb_dio_stall;
@@ -336,7 +360,7 @@ module	main(i_clk, i_reset,
 	assign	     version_sel = ((wb_sio_sel)&&(wb_addr[ 2: 0] ==  3'h4));  // 0x00010
 	assign	    bustimer_sel = ((wb_dio_sel)&&((wb_addr[ 0: 0] &  1'h1) ==  1'h0));  // 0x00000
 	assign	    watchdog_sel = ((wb_dio_sel)&&((wb_addr[ 0: 0] &  1'h1) ==  1'h1));  // 0x00004
-	assign	   flash_cfg_sel = ((wb_addr[17:14] &  4'hf) ==  4'h1); // 0x10000
+	assign	    flashcfg_sel = ((wb_addr[17:14] &  4'hf) ==  4'h1); // 0x10000
 	assign	      wb_dio_sel = ((wb_addr[17:14] &  4'hf) ==  4'h2); // 0x20000 - 0x20007
 //x2	Was a master bus as well
 	assign	     console_sel = ((wb_addr[17:14] &  4'hf) ==  4'h3); // 0x30000 - 0x3000f
@@ -378,7 +402,7 @@ module	main(i_clk, i_reset,
 	// BUS-LOGIC for wb
 	//
 	assign	wb_none_sel = (wb_stb)&&({
-				flash_cfg_sel,
+				flashcfg_sel,
 				wb_dio_sel,
 				console_sel,
 				wb_sio_sel,
@@ -401,7 +425,7 @@ module	main(i_clk, i_reset,
 	// immediately one after the other.
 	//
 	always @(posedge i_clk)
-		case({		flash_cfg_ack,
+		case({		flashcfg_ack,
 				wb_dio_ack,
 				console_ack,
 				wb_sio_ack,
@@ -481,7 +505,7 @@ module	main(i_clk, i_reset,
 	// respectively, which will appear ahead of any other device acks.
 	//
 	always @(posedge i_clk)
-		wb_ack <= (wb_cyc)&&(|{ flash_cfg_ack,
+		wb_ack <= (wb_cyc)&&(|{ flashcfg_ack,
 				wb_dio_ack,
 				console_ack,
 				wb_sio_ack,
@@ -509,7 +533,7 @@ module	main(i_clk, i_reset,
 	always	@(posedge i_clk)
 	if (wb_stb && ! wb_stall)
 		casez(wb_addr[17:14])
-			// 000f0000 & 00010000, flash_cfg
+			// 000f0000 & 00010000, flashcfg
 			4'b0001: r_wb_bus_select <= 3'd0;
 			// 000f0000 & 00020000, wb_dio
 			4'b0010: r_wb_bus_select <= 3'd1;
@@ -526,7 +550,7 @@ module	main(i_clk, i_reset,
 
 	always @(posedge i_clk)
 	casez(r_wb_bus_select)
-		3'd0: wb_idata <= flash_cfg_data;
+		3'd0: wb_idata <= flashcfg_data;
 		3'd1: wb_idata <= wb_dio_data;
 		3'd2: wb_idata <= console_data;
 		3'd3: wb_idata <= wb_sio_data;
@@ -535,7 +559,7 @@ module	main(i_clk, i_reset,
 		default: wb_idata <= flash_data;
 	endcase
 
-	assign	wb_stall =	((flash_cfg_sel)&&(flash_cfg_stall))
+	assign	wb_stall =	((flashcfg_sel)&&(flashcfg_stall))
 				||((wb_dio_sel)&&(wb_dio_stall))
 				||((console_sel)&&(console_stall))
 				||((wb_sio_sel)&&(wb_sio_stall))
@@ -711,9 +735,6 @@ module	main(i_clk, i_reset,
 
 	always @(posedge i_clk)
 		cpu_reset <= (|cpu_reset_bus);
-	assign	flash_cfg_data  = flash_data;
-	assign	flash_cfg_stall = flash_stall;
-	assign	flash_cfg_ack   = 1'b0;
 `ifdef	BKRAM_ACCESS
 	memdev #(.LGMEMSZ(13), .EXTRACLOCK(1))
 		bkrami(i_clk, 1'b0,
@@ -865,7 +886,7 @@ module	main(i_clk, i_reset,
 	spixpress flashi(i_clk, i_reset,
 			(wb_cyc),
 				(wb_stb)&&(flash_sel),
-				(wb_stb)&&(flash_cfg_sel), wb_we,
+				(wb_stb)&&(flashcfg_sel), wb_we,
 				wb_addr[(19-3):0],
 				wb_data,
 			flash_stall, flash_ack, flash_data,
@@ -943,6 +964,21 @@ module	main(i_clk, i_reset,
 
 	assign	bustimer_int = 1'b0;	// bustimer.INT.BUSTIMER.WIRE
 `endif	// BUSTIMER_ACCESS
+
+`ifdef	FLASHCFG_ACCESS
+	// The Flash control interface result comes back together with the
+	// flash interface itself.  Hence, we always return zero here.
+	assign	flashcfg_ack   = 1'b0;
+	assign	flashcfg_stall = 1'b0;
+	assign	flashcfg_data  = flash_data;
+`else	// FLASHCFG_ACCESS
+
+	// In the case that there is no flashcfg peripheral responding on the wb bus
+	assign	flashcfg_ack   = (wb_stb) && (flashcfg_sel);
+	assign	flashcfg_stall = 0;
+	assign	flashcfg_data  = 0;
+
+`endif	// FLASHCFG_ACCESS
 
 	assign	version_data = `DATESTAMP;
 	assign	version_ack = 1'b0;

@@ -20,3 +20,6 @@ set_io i_uart_rx 62
 
 # Onboard 25Mhz oscillator
 set_io i_clk 60
+
+## Adding in any PCF_INSERT tags
+

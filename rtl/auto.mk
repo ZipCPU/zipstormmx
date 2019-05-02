@@ -47,13 +47,13 @@ BUSDLYD := cpu
 BUSDLY  := $(addprefix $(BUSDLYD)/,busdelay.v wbpriarbiter.v)
 ZIPCPUD := cpu
 ZIPCPU  := $(addprefix $(ZIPCPUD)/,zipcpu.v cpuops.v dblfetch.v memops.v idecode.v ziptimer.v wbpriarbiter.v zipbones.v busdelay.v cpudefs.v icontrol.v div.v wbdblpriarb.v mpyop.v iscachable.v dcache.v slowmpy.v)
-FLASH := spixpress.v oclkddr.v
-
 HBUART := txuartlite.v rxuartlite.v ufifo.v
+
+FLASH := spixpress.v oclkddr.v
 
 HBBUSD := hexbus
 HBBUS  := $(addprefix $(HBBUSD)/,hbconsole.v hbdechex.v hbdeword.v hbexec.v hbgenhex.v hbidle.v hbints.v hbnewline.v hbpack.v console.v)
 SPIOD := .
 SPIO  := $(addprefix $(SPIOD)/,spio.v debouncer.v)
-VFLIST := main.v  $(BKRAM) $(BUSPIC) $(BUSDLY) $(ZIPCPU) $(FLASH) $(HBUART) $(HBBUS) $(SPIO)
+VFLIST := main.v  $(BKRAM) $(BUSPIC) $(BUSDLY) $(ZIPCPU) $(HBUART) $(FLASH) $(HBBUS) $(SPIO)
 AUTOVDIRS :=  -y cpu -y hexbus -y .

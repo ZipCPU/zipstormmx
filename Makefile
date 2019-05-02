@@ -16,7 +16,7 @@
 ## Copyright (C) 2019, Gisselquist Technology, LLC
 ##
 ## This program is free software (firmware): you can redistribute it and/or
-## modify it under the terms of  the GNU General Public License as published
+## modify it under the terms of the GNU General Public License as published
 ## by the Free Software Foundation, either version 3 of the License, or (at
 ## your option) any later version.
 ##
@@ -137,11 +137,13 @@ autodata: check-autofpga
 	$(call copyif-changed,auto-data/toplevel.v,rtl/toplevel.v)
 	$(call copyif-changed,auto-data/main.v,rtl/main.v)
 	$(call copyif-changed,auto-data/iscachable.v,rtl/cpu/iscachable.v)
-	$(call copyif-changed,auto-data/blackmx.pcf,rtl/blackmx.pcf)
+	$(call copyif-changed,auto-data/build.pcf,rtl/blackmx.pcf)
 	$(call copyif-changed,auto-data/regdefs.h,sw/host/regdefs.h)
 	$(call copyif-changed,auto-data/regdefs.cpp,sw/host/regdefs.cpp)
 	$(call copyif-changed,auto-data/board.h,sw/board/board.h)
 	$(call copyif-changed,auto-data/board.h,sw/zlib/board.h)
+	$(call copyif-changed,auto-data/bkram.ld,sw/board/bkram.ld)
+	$(call copyif-changed,auto-data/flash.ld,sw/board/flash.ld)
 	$(call copyif-changed,auto-data/board.ld,sw/board/board.ld)
 	$(call copyif-changed,auto-data/rtl.make.inc,rtl/auto.mk)
 	$(call copyif-changed,auto-data/main_tb.cpp,sim/main_tb.cpp)
