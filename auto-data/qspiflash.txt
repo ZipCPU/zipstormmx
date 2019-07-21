@@ -1,0 +1,247 @@
+################################################################################
+##
+## Filename: 	qspiflash.txt
+##
+## Project:	TinyZip, a demonstration project for the TinyFPGA B2 board
+##
+## Purpose:	Describes the flash in our new data format.
+##
+## Creator:	Dan Gisselquist, Ph.D.
+##		Gisselquist Technology, LLC
+##
+################################################################################
+##
+## Copyright (C) 2017-2018, Gisselquist Technology, LLC
+##
+## This program is free software (firmware): you can redistribute it and/or
+## modify it under the terms of  the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License, or (at
+## your option) any later version.
+##
+## This program is distributed in the hope that it will be useful, but WITHOUT
+## ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
+## FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+## for more details.
+##
+## You should have received a copy of the GNU General Public License along
+## with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
+## target there if the PDF file isn't present.)  If not, see
+## <http://www.gnu.org/licenses/> for a copy.
+##
+## License:	GPL, v3, as defined and found on www.gnu.org,
+##		http://www.gnu.org/licenses/gpl.html
+##
+##
+################################################################################
+##
+##
+@PREFIX=flash
+@DEVID=FLASH
+@ACCESS=@$(DEVID)_ACCESS
+@$LGFLASHSZ=19
+@$NADDR=(1<<(@$LGFLASHSZ-2))
+@$NBYTES=(1<<@$LGFLASHSZ)
+@NBYTES.FORMAT=0x%08x
+@ACCESS= FLASH_ACCESS
+@SLAVE.TYPE=MEMORY
+@SLAVE.BUS=wb
+@NDUMMY=6
+@RDDELAY=1
+@STARTUP_SCRIPT="adesto.hex"
+@TOP.PORTLIST=
+		// Top level Quad-SPI I/O ports
+		o_qspi_cs_n, o_qspi_sck, io_qspi_dat
+@TOP.IODECL=
+	// Quad SPI flash
+	output	wire		o_qspi_cs_n, o_qspi_sck;
+	inout	wire	[3:0]	io_qspi_dat;
+@TOP.DEFNS=
+	wire		w_qspi_sck, w_qspi_cs_n;
+	wire	[1:0]	qspi_bmod;
+	wire	[3:0]	qspi_dat, i_qspi_dat;
+@TOP.MAIN=
+		// Quad SPI flash
+		w_qspi_cs_n, w_qspi_sck, qspi_dat, i_qspi_dat, qspi_bmod
+@TOP.INSERT=
+	//
+	//
+	// Wires for setting up the QSPI flash wishbone peripheral
+	//
+	//
+	// QSPI)BMOD, Quad SPI bus mode, Bus modes are:
+	//	0?	Normal serial mode, one bit in one bit out
+	//	10	Quad SPI mode, going out
+	//	11	Quad SPI mode coming from the device (read mode)
+	SB_IO #(.PULLUP(1'b0), .PIN_TYPE(6'b0100_01))
+		theqspicsn(.OUTPUT_ENABLE(1'b1),
+				.OUTPUT_CLK(s_clk),
+				.CLOCK_ENABLE(1'b1),
+				.PACKAGE_PIN(o_qspi_cs_n),
+				.D_OUT_0(w_qspi_cs_n),
+				.D_OUT_1(w_qspi_cs_n));
+
+	SB_IO #(.PULLUP(1'b0), .PIN_TYPE(6'b1100_01))
+		theqspi0 (.OUTPUT_ENABLE(qspi_bmod[1:0]!=2'b11),
+				.OUTPUT_CLK(s_clk),
+				.CLOCK_ENABLE(1'b1),
+				.PACKAGE_PIN(io_qspi_dat[0]),
+				.D_OUT_0(qspi_dat[0]),
+				.D_OUT_1(qspi_dat[0]),
+				.D_IN_0(i_qspi_dat[0]));
+
+	SB_IO #(.PULLUP(1'b0), .PIN_TYPE(6'b1100_01))
+		theqspi1 (.OUTPUT_ENABLE(qspi_bmod[1:0]==2'b10),
+				.OUTPUT_CLK(s_clk),
+				.CLOCK_ENABLE(1'b1),
+				.PACKAGE_PIN(io_qspi_dat[1]),
+				.D_OUT_0(qspi_dat[1]),
+				.D_OUT_1(qspi_dat[1]),
+				.D_IN_0(i_qspi_dat[1]));
+
+	SB_IO #(.PULLUP(1'b0), .PIN_TYPE(6'b1100_01))
+		theqspi2 (.OUTPUT_ENABLE(qspi_bmod[1:0]!=2'b11),
+				.OUTPUT_CLK(s_clk),
+				.CLOCK_ENABLE(1'b1),
+				.PACKAGE_PIN(io_qspi_dat[2]),
+				.D_OUT_0((qspi_bmod!=2'b10) ? 1'b1:qspi_dat[2]),
+				.D_OUT_1((qspi_bmod!=2'b10) ? 1'b1:qspi_dat[2]),
+				.D_IN_0(i_qspi_dat[2]));
+
+	SB_IO #(.PULLUP(1'b0), .PIN_TYPE(6'b1100_01))
+		theqspi3 (.OUTPUT_ENABLE(qspi_bmod[1:0]!=2'b11),
+				.OUTPUT_CLK(s_clk),
+				.CLOCK_ENABLE(1'b1),
+				.PACKAGE_PIN(io_qspi_dat[3]),
+				.D_OUT_0((qspi_bmod!=2'b10) ? 1'b1:qspi_dat[3]),
+				.D_OUT_1((qspi_bmod!=2'b10) ? 1'b1:qspi_dat[3]),
+				.D_IN_0(i_qspi_dat[3]));
+
+	SB_IO #(.PIN_TYPE(6'b0100_01))
+		theqspick (.OUTPUT_ENABLE(1'b1),
+				.OUTPUT_CLK(s_clk),
+				.CLOCK_ENABLE(1'b1),
+				.D_OUT_0(!w_qspi_sck),
+				.D_OUT_1(1'b1),
+				.PACKAGE_PIN(o_qspi_sck));
+
+@MAIN.PORTLIST=
+		// The Universal QSPI Flash
+		o_qspi_cs_n, o_qspi_sck, o_qspi_dat, i_qspi_dat, o_qspi_mod
+@MAIN.IODECL=
+	// The Universal QSPI flash
+	output	wire		o_qspi_cs_n, o_qspi_sck;
+	output	wire	[3:0]	o_qspi_dat;
+	input	wire	[3:0]	i_qspi_dat;
+	output	wire	[1:0]	o_qspi_mod;
+@MAIN.DEFNS=
+	// Definitions for the @$(PREFIX) debug port
+	wire		@$(PREFIX)_dbg_trigger;
+	wire	[31:0]	@$(PREFIX)_debug;
+@MAIN.INSERT=
+	qflexpress #(.LGFLASHSZ(@$LGFLASHSZ), .OPT_CLKDIV(0),
+		.NDUMMY(@$(NDUMMY)), .RDDELAY(@$(RDDELAY)),
+		.OPT_STARTUP_FILE(@$(STARTUP_SCRIPT)),
+`ifdef	FLASHCFG_ACCESS
+		.OPT_CFG(1'b1)
+`else
+		.OPT_CFG(1'b0)
+`endif
+		)
+		@$(PREFIX)i(i_clk, i_reset,
+			(wb_cyc), (wb_stb)&&(@$(PREFIX)_sel),
+			(wb_stb)&&(flashcfg_sel), wb_we,
+			wb_addr[(@$LGFLASHSZ-3):0], wb_data,
+			@$(PREFIX)_ack, @$(PREFIX)_stall, @$(PREFIX)_data,
+			o_qspi_sck, o_qspi_cs_n, o_qspi_mod, o_qspi_dat, i_qspi_dat,
+			flash_dbg_trigger, flash_debug);
+@MAIN.ALT=
+	assign	o_qspi_sck  = 1'b1;
+	assign	o_qspi_cs_n = 1'b1;
+	assign	o_qspi_mod  = 2'b01;
+	assign	o_qspi_dat  = 4'b1111;
+@MEM.NAME= flash
+@MEM.ACCESS = rx
+@REGS.N= 1
+@REGDEFS.H.DEFNS=
+#define	@$(DEVID)BASE	@$[0x%08x](REGBASE)
+#define	@$(DEVID)LEN	@$NBYTES
+#define	@$(DEVID)LGLEN	@$LGFLASHSZ
+//
+#define	FLASH_RDDELAY	@$(RDDELAY)
+#define	FLASH_NDUMMY	@$(NDUMMY)
+//
+@REGS.0= 0 R_@$(DEVID) @$(DEVID)
+@BDEF.OSDEF=_BOARD_HAS_@$(DEVID)
+@BDEF.OSVAL=extern int _@$(PREFIX)[1];
+@LD.PERM=	rx
+@LD.NAME=	@$(PREFIX)
+@SIM.INCLUDE=
+#include "flashsim.h"
+@SIM.DEFNS=
+#ifdef	@$(ACCESS)
+	FLASHSIM	*m_@$(MEM.NAME);
+#endif // @$(ACCESS)
+@SIM.INIT=
+#ifdef	@$(ACCESS)
+		m_@$(MEM.NAME) = new FLASHSIM(FLASHLGLEN, false, @$RDDELAY, @$NDUMMY);
+#endif // @$(ACCESS)
+@SIM.TICK=
+#ifdef	@$(ACCESS)
+		m_core->i_qspi_dat = m_@$(MEM.NAME)->simtick(
+			m_core->o_qspi_cs_n,
+			m_core->o_qspi_sck,
+			m_core->o_qspi_dat,
+			m_core->o_qspi_mod);
+#endif // @$(ACCESS)
+@SIM.LOAD=
+#ifdef	@$(ACCESS)
+			m_@$(MEM.NAME)->load(start, &buf[offset], wlen);
+#endif // @$(ACCESS)
+##
+##
+##
+##
+## Now the control interface
+@PREFIX=flashcfg
+@NADDR=1
+@DEVID=FLASHCFG
+@ACCESS=@$(DEVID)_ACCESS
+@DEPENDS= FLASH_ACCESS
+## Although this is really a SLAVE.TYPE=SINGLE interface, it receives its
+## acknowledgements from the flash above.  SLAVE.TYPE=SINGLE will create
+## acknowledgements in the interconnect, resulting in bus errors.  As a result,
+## this must be a SLAVE.TYPE=OTHER
+##
+@SLAVE.TYPE=OTHER
+@SLAVE.BUS=wb
+@MAIN.INSERT=
+	// The Flash control interface result comes back together with the
+	// flash interface itself.  Hence, we always return zero here.
+	assign	@$(PREFIX)_ack   = 1'b0;
+	assign	@$(PREFIX)_stall = 1'b0;
+	assign	@$(PREFIX)_data  = flash_data;
+@REGS.NOTE= // FLASH erase/program configuration registers
+@REGS.N= 1
+@REGS.0= 0 R_@$(DEVID) @$(DEVID) QSPIC
+@REGDEFS.H.INSERT=
+// Flash control constants
+#define	QSPI_FLASH	// This core and hardware support a Quad SPI flash
+#define	SZPAGEB		256
+#define	PGLENB		256
+#define	SZPAGEW		64
+#define	PGLENW		64
+#define	NPAGES		256
+#define	SECTORSZB	(NPAGES * SZPAGEB)	// In bytes, not words!!
+#define	SECTORSZW	(NPAGES * SZPAGEW)	// In words
+#define	NSECTORS	64
+#define	SECTOROF(A)	((A) & (-1<<16))
+#define	SUBSECTOROF(A)	((A) & (-1<<12))
+#define	PAGEOF(A)	((A) & (-1<<8))
+
+@BDEF.IONAME= _@$(PREFIX)
+@BDEF.OSDEF= _BOARD_HAS_@$(DEVID)
+@BDEF.IOTYPE=unsigned
+@BDEF.OSVAL=static volatile @$(BDEF.IOTYPE) * const @$(BDEF.IONAME) = ((@$BDEF.IOTYPE *)(@$[0x%08x](REGBASE)));
+##
+@RTL.MAKE.GROUP= FLASH
+@RTL.MAKE.FILES= qflexpress.v
