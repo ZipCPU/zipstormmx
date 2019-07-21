@@ -38,15 +38,15 @@
 ##
 .PHONY: all
 all:
-PROGRAMS := wbregs flashid dumpflash spixscope zipload zipstate dbgscope zipdbg
+PROGRAMS := wbregs flashid dumpflash spixscope zipload zipstate dbgscope zipdbg netuart
 #
 SCOPES :=
 all: $(PROGRAMS) $(SCOPES)
 CXX := g++
 OBJDIR := obj-pc
 BUSSRCS := hexbus.cpp llcomms.cpp regdefs.cpp byteswap.cpp
-SCOPESRC:= spixscope.cpp sramscope.cpp dbgscope.cpp
-SOURCES := wbregs.cpp netpport.cpp flashid.cpp flashdrvr.cpp $(BUSSRCS) $(SCOPESRC)
+SCOPESRC:= spixscope.cpp dbgscope.cpp
+SOURCES := wbregs.cpp netuart.cpp flashid.cpp flashdrvr.cpp $(BUSSRCS) $(SCOPESRC)
 HEADERS := llcomms.h port.h hexbus.h devbus.h
 OBJECTS := $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(SOURCES)))
 BUSOBJS := $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(BUSSRCS)))
@@ -87,8 +87,9 @@ divutb: $(OBJDIR)/divutb.o
 # as well.
 wbprogram: $(OBJDIR)/wbprogram.o $(OBJDIR)/flashdrvr.o $(BUSOBJS)
 	$(CXX) -g $^ -o $@
-.PHONY: flashid sramscope spixscope zipstate zipload dbgscope zipdbg
 flashid: $(OBJDIR)/flashid.o $(BUSOBJS)
+	echo "Requires" $(OBJDIR)/flashid.o $(BUSOBJS)
+	ls -l $(OBJDIR)/flashid.o $(BUSOBJS)
 	$(CXX) -g $^ -o $@
 zipstate: $(OBJDIR)/zipstate.o $(BUSOBJS)
 	$(CXX) -g $^ -o $@

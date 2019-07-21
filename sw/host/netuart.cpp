@@ -57,6 +57,7 @@
 
 #ifndef	BAUDRATE
 #define	BAUDRATE	115200
+#error "No baud rate defined"
 #endif
 
 #define	NO_WAITING	0
