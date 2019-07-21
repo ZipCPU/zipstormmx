@@ -53,12 +53,31 @@
 	inout	wire	[1:0]	io_btn;
 	output	wire	[1:0]	o_led;
 @TOP.DEFNS=
+	wire	[1:0]	i_btn;
 	wire	[3:0]	w_led;
 @TOP.INSERT=
-	// assign	io_btn = 2'bz;
-	assign	o_led = w_led[3:2];
+	//
+	// Special purpose I/O (LEDs and buttons)
+	//
+	// assign	io_btn[0] = (o_led[0] ? 1'b0 : 1'bz);
+	// assign	io_btn[1] = (o_led[1] ? 1'b0 : 1'bz);
+	//
+	assign	o_led = ~w_led[3:2];
+
+	SB_IO #(.PULLUP(1'b1), .PIN_TYPE(6'b1010_01))
+	ledio0 (.PACKAGE_PIN(io_btn[0]),
+		.OUTPUT_ENABLE(w_led[0]),
+		.D_OUT_0(1'b0),
+		.D_IN_0(i_btn[0]));
+
+	SB_IO #(.PULLUP(1'b1), .PIN_TYPE(6'b1010_01))
+	ledio1 (.PACKAGE_PIN(io_btn[1]),
+		.OUTPUT_ENABLE(w_led[1]),
+		.D_OUT_0(1'b0),
+		.D_IN_0(i_btn[1]));
+
 @TOP.MAIN=
-		io_btn, w_led
+		~i_btn, w_led
 @MAIN.PORTLIST=
 		// SPIO interface
 		i_btn, o_led
