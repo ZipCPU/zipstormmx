@@ -53,8 +53,6 @@ endif
 export	$(VERILATOR)
 VROOT   := $(VERILATOR_ROOT)
 all: main_tb
-VERILATOR_ROOT ?= $(shell bash -c 'verilator -V|grep VERILATOR_ROOT | head -1 | sed -e " s/^.*=\s*//"')
-VROOT	:= $(VERILATOR_ROOT)
 VDEFS   := $(shell ./vversion.sh)
 VINCD   := $(VROOT)/include
 VINC	:= -I$(VINCD) -I$(VINCD)/vltstd -I$(VOBJDR)

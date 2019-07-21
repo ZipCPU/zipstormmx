@@ -4,7 +4,7 @@
 //
 // Project:	ZipSTORM-MX, an iCE40 ZipCPU demonstration project
 //
-// Purpose:	Definse prototypes for the functions that can be used to convert
+// Purpose:	Defines prototypes for the functions that can be used to convert
 //		between little endian and big endian byte orders, and to handle
 //	conversions between character strings and bit-endian words made from
 //	those characters.
@@ -18,7 +18,7 @@
 // Copyright (C) 2019, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //
