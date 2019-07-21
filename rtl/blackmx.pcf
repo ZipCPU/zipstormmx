@@ -4,19 +4,32 @@ set_io io_btn[1] 52 # B82/GBin4 L1 Green led / S1 button
 set_io o_led[0] 55 # B91 L3 Yellow led
 set_io o_led[1] 56 # B94 cs Red led
 
-set_io dsck 76
+# Dual SPI interface, for interacting with the A/D on the STM
+# set_io dsck 76
 
-# QSpi
+# Bare SPI (only) flash
 set_io o_spi_cs_n  71
 set_io o_spi_sck   70
 set_io o_spi_mosi  67
 set_io i_spi_miso  68
 set_io o_spi_hold  63
 set_io o_spi_wp    64
+#
+# The QSPI flash interface
+# set_io o_qspi_cs_n	71
+# set_io o_qspi_sck	70
+# set_io io_qspi_dat[0]	67
+# set_io io_qspi_dat[1]	68
+# set_io io_qspi_dat[2]	63
+# set_io io_qspi_dat[3]	64
 
-# Uart
-set_io o_uart_tx 61
-set_io i_uart_rx 62
+# STM <-> UART
+## set_io o_uart_tx 61
+## set_io i_uart_rx 62
+#
+# UART via PMod
+set_io o_uart_tx 37
+set_io i_uart_rx 32
 
 # Onboard 25Mhz oscillator
 set_io i_clk 60

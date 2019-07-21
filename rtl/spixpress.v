@@ -35,7 +35,7 @@
 // 			control port may be read to see what values were
 // 			read from the SPI port.  Those values will be stored
 // 			in these same bits [7:0].
-// 
+//
 //	Memory
 //		Returns the data from the address read
 //
@@ -210,11 +210,11 @@ module	spixpress(i_clk, i_reset,
 	if (actual_sck)
 	begin
 		if (cfg_user_mode)
-			o_wb_data <= { 24'h0, o_wb_data[6:0], i_spi_miso };
+			o_wb_data <= { 19'h0, 1'b1, 4'h0, o_wb_data[6:0], i_spi_miso };
 		else
 			o_wb_data <= { o_wb_data[30:0], i_spi_miso };
 	end else if (cfg_user_mode)
-		o_wb_data <= { 24'h0, o_wb_data[7:0] };
+		o_wb_data <= { 19'h0, 1'b1, 4'h0, o_wb_data[7:0] };
 
 	//
 	// CSN
@@ -305,7 +305,7 @@ module	spixpress(i_clk, i_reset,
 	// Reset logic
 	//
 	////////
-	
+
 	initial	assume(i_reset);
 	always @(*)
 	if (!f_past_valid)

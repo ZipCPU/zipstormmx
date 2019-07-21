@@ -125,13 +125,21 @@ $(JSON): toplevel.v $(VFLIST)
 .PHONY: yosys
 yosys: $(JSON)
 
+DEVFLAGS := --hx8k --package tq144:4k
+PNRFLAGS := --placer heap
 $(ASCFILE): $(JSON) $(PCFFILE)
-	$(NEXTPNR) --hx8k --package tq144:4k --freq 25 --json $(JSON) --pcf $(PCFFILE) --asc $(ASCFILE)
+	$(NEXTPNR) $(DEVFLAGS) --freq 50 $(PNRFLAGS) --json $(JSON) --pcf $(PCFFILE) --asc $(ASCFILE) |& tee pnr.log
 nextpnr: $(ASCFILE)
 
 $(BINFILE): $(ASCFILE)
 	icepack $(ASCFILE) $(BINFILE)
-	icetime -d hx8k -c 25 $(ASCFILE)
+	icetime -d hx8k -c 50 $(ASCFILE)
+
+.PHONY: load
+load: $(BINFILE)
+	stty -F /dev/ttyACM0 raw
+	cat $(BINFILE) >/dev/ttyACM0
+
 
 #
 #
