@@ -1,0 +1,21 @@
+[tasks]
+prf
+cvr
+
+[options]
+prf: mode  prove
+prf: depth 32
+cvr: mode  cover
+cvr: depth 200
+
+[engines]
+smtbmc boolector
+
+[script]
+read -formal wbsdram.v
+read -formal fwb_slave.v
+prep -top wbsdram
+
+[files]
+../../rtl/wbsdram.v
+fwb_slave.v

@@ -1,0 +1,125 @@
+[*]
+[*] GTKWave Analyzer v3.3.66 (w)1999-2015 BSI
+[*] Sun Jul 21 00:13:17 2019
+[*]
+[dumpfile] "/home/dan/work/rnd/opencores/zipstorm/trunk-mx/bench/formal/wbsdram_prf/engine_0/trace_induct.vcd"
+[dumpfile_mtime] "Sun Jul 21 00:09:37 2019"
+[dumpfile_size] 66173
+[savefile] "/home/dan/work/rnd/opencores/zipstorm/trunk-mx/bench/formal/wbsdram.gtkw"
+[timestart] 0
+[size] 1920 1029
+[pos] -1 -1
+*-6.000000 411 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 196
+[signals_width] 182
+[sst_expanded] 1
+[sst_vpaned_height] 306
+@28
+wbsdram.i_clk
+@200
+-
+@28
+[color] 3
+wbsdram.i_wb_cyc
+[color] 3
+wbsdram.i_wb_stb
+[color] 3
+wbsdram.i_wb_we
+@22
+[color] 3
+wbsdram.i_wb_addr[18:0]
+[color] 3
+wbsdram.i_wb_data[31:0]
+[color] 3
+wbsdram.i_wb_sel[3:0]
+@29
+[color] 2
+wbsdram.o_wb_stall
+[color] 2
+wbsdram.o_wb_ack
+@23
+[color] 2
+wbsdram.o_wb_data[31:0]
+@200
+-
+@22
+wbsdram.i_row[10:0]
+@28
+wbsdram.i_bank
+@22
+wbsdram.i_col[7:0]
+@28
+wbsdram.bus_cyc
+@200
+-
+@28
+wbsdram.pending
+wbsdram.r_we
+wbsdram.r_pending
+@22
+wbsdram.r_addr[18:0]
+wbsdram.r_data[31:0]
+wbsdram.r_sel[3:0]
+@200
+-
+@22
+wbsdram.r_row[10:0]
+@28
+wbsdram.r_bank
+@22
+wbsdram.r_col[7:0]
+@200
+-
+@28
+wbsdram.need_refresh
+wbsdram.in_refresh
+wbsdram.in_refresh_clk[2:0]
+@22
+wbsdram.refresh_clk[9:0]
+@28
+wbsdram.refresh_cmd
+@200
+-
+@22
+[color] 2
+wbsdram.o_cmd[3:0]
+@28
+[color] 2
+wbsdram.o_ram_cs_n
+[color] 2
+wbsdram.o_ram_ras_n
+[color] 2
+wbsdram.o_ram_cas_n
+[color] 2
+wbsdram.o_ram_we_n
+@200
+-
+@28
+[color] 2
+wbsdram.o_ram_bank
+@22
+[color] 2
+wbsdram.o_ram_data[15:0]
+@28
+[color] 2
+wbsdram.o_ram_dmod
+[color] 2
+wbsdram.o_ram_dqm[1:0]
+@22
+[color] 2
+wbsdram.o_ram_addr[11:0]
+[color] 3
+wbsdram.i_ram_data[15:0]
+@200
+-
+@28
+wbsdram.bank_active<0>[2:0]
+wbsdram.bank_active<1>[2:0]
+@22
+wbsdram.bank_row<0>[10:0]
+wbsdram.bank_row<1>[10:0]
+wbsdram.r_barrell_ack[5:0]
+@28
+wbsdram.r_bank_valid
+[pattern_trace] 1
+[pattern_trace] 0

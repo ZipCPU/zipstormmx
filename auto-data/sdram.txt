@@ -38,13 +38,14 @@
 @PREFIX=sdram
 @DEVID=SDRAM
 @ACCESS=@$(DEVID)_ACCESS
-@$LGRAMSZ=23
+@DEPENDS=ALLCLOCKS_ACCESS
+# The RAM has 1MB
+@$LGRAMSZ=21
 @$NADDR=(1<<(@$LGRAMSZ-2))
 @$NBYTES=(1<<@$LGRAMSZ)
 @NBYTES.FORMAT=0x%08x
 @SLAVE.TYPE=MEMORY
 @SLAVE.BUS=wb
-@LD.PERM=rwx
 @TOP.PORTLIST=
 		// Top level SDRAM I/O ports
 		o_ram_clk, o_ram_cke, o_ram_cs_n, o_ram_ras_n, o_ram_cas_n,
@@ -54,7 +55,6 @@
 	// SDRAM
 	output	wire	o_ram_clk, o_ram_cke,
 			o_ram_cs_n, o_ram_ras_n, o_ram_cas_n, o_ram_we_n;
-	output	wire	[1:0]	o_ram_bs;
 	output	wire	[11:0]	o_ram_addr;
 	output	wire		o_ram_udqm, o_ram_ldqm;
 	inout	wire	[15:0]	io_ram_data;
@@ -65,13 +65,12 @@
 	reg	[15:0]	r_ram_data;
 @TOP.MAIN=
 			// SDRAM interface
-			// o_ram_clk,	// SDRAM clock = clk_100mhz_s = s_clk
-			o_ram_cs_n,	// Chip select
+			// o_ram_clk,	// SDRAM clock
 			o_ram_cke,	// Clock enable
+			o_ram_cs_n,	// Chip select
 			o_ram_ras_n,	// Row address strobe
 			o_ram_cas_n,	// Column address strobe
 			o_ram_we_n,	// Write enable
-			o_ram_bs,	// Bank select
 			o_ram_addr,	// Address lines
 			w_ram_drive_data,
 			r_ram_data,	// Data lines (input)
@@ -92,8 +91,10 @@
 	assign	o_ram_clk = mem_clk;
 @MAIN.PORTLIST=
 		// The SDRAM I/O ports
-		o_ram_cs_n, o_ram_cke, o_ram_ras_n, o_ram_cas_n,
-			o_ram_we_n, o_ram_bs, o_ram_addr,
+		o_ram_cke,
+			// The command word
+			o_ram_cs_n, o_ram_ras_n, o_ram_cas_n, o_ram_we_n,
+			o_ram_addr,
 			o_ram_drive_data, i_ram_data, o_ram_data,
 			o_ram_dqm
 @MAIN.IODECL=
@@ -121,12 +122,11 @@
 			o_ram_drive_data, i_ram_data, o_ram_data, o_ram_dqm,
 		@$(PREFIX)_debug);
 @MAIN.ALT=
-	assign	o_ram_cs_n  = 1'b1;
 	assign	o_ram_cke   = 1'b1;
+	assign	o_ram_cs_n  = 1'b1;
 	assign	o_ram_ras_n = 1'b1;
 	assign	o_ram_cas_n = 1'b1;
 	assign	o_ram_we_n  = 1'b1;
-	assign	o_ram_bs    = 2'b11;
 
 	assign	o_ram_drive_data  = 1'b0;
 

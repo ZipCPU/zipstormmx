@@ -59,11 +59,13 @@ module	wbsdram(i_clk,
 		i_wb_cyc, i_wb_stb, i_wb_we, i_wb_addr, i_wb_data, i_wb_sel,
 			o_wb_ack, o_wb_stall, o_wb_data,
 		o_ram_cs_n, o_ram_cke, o_ram_ras_n, o_ram_cas_n, o_ram_we_n,
-			o_ram_bs, o_ram_addr,
-			o_ram_dmod, i_ram_data, o_ram_data, o_ram_dqm,
+			o_ram_addr, o_ram_dmod,
+			i_ram_data, o_ram_data, o_ram_dqm,
 		o_debug);
+	parameter	CLOCK_FREQUENCY_HZ = 50_000_000;
+	parameter [0:0]	OPT_FWD_ADDRESS = 1'b0;
 	parameter	RDLY = 6;
-	localparam	AW=23, DW=32;
+	localparam	AW=21-2, DW=32;
 	input	wire			i_clk;
 	// Wishbone
 	//	inputs
@@ -74,21 +76,88 @@ module	wbsdram(i_clk,
 	//	outputs
 	output	wire		o_wb_ack;
 	output	reg		o_wb_stall;
-	output	wire [31:0]	o_wb_data;
+	output	wire [DW-1:0]	o_wb_data;
 	// SDRAM control
 	output	wire		o_ram_cke;
-	output	reg		o_ram_cs_n,
+	output	wire		o_ram_cs_n,
 				o_ram_ras_n, o_ram_cas_n, o_ram_we_n;
-	output	reg	[1:0]	o_ram_bs;
-	output	reg	[12:0]	o_ram_addr;
+	output	reg	[11:0]	o_ram_addr;
 	output	reg		o_ram_dmod;
 	input		[15:0]	i_ram_data;
 	output	reg	[15:0]	o_ram_data;
 	output	reg	[1:0]	o_ram_dqm;
+	//
 	output	wire [(DW-1):0]	o_debug;
 
+	reg		need_refresh;
+	reg	[9:0]	refresh_clk;
+	wire		refresh_cmd;
+	reg		in_refresh;
+	reg	[2:0]	in_refresh_clk;
+
+	reg	[2:0]	bank_active	[0:1];
+	reg	[(RDLY-1):0]	r_barrell_ack;
+	reg			r_pending;
+	reg			r_we;
+	reg	[AW-1:0]	r_addr;
+	reg	[DW-1:0]	r_data;
+	reg	[DW/8-1:0]	r_sel;
+	reg	[1:0]		nxt_sel;
+
+	reg	[10:0]	bank_row	[0:1];
+	reg		i_bank, r_bank, fwd_bank;
+	reg	[7:0]	i_col,  r_col;
+	reg	[10:0]	i_row,  r_row,  fwd_row;
+
+	reg	[2:0]		clocks_til_idle;
+	reg	[1:0]		m_state;
+	wire			bus_cyc;
+	reg			nxt_dmod;
+	wire			pending;
+	reg	[AW-1:0]	fwd_addr;
+	reg	[3:0]		o_cmd;
+
+	//
+	// Commands
+	//
+	localparam [3:0]	CMD_SET_MODE  = 4'h0;
+	localparam [3:0]	CMD_REFRESH   = 4'h1;
+	localparam [3:0]	CMD_PRECHARGE = 4'h2;
+	localparam [3:0]	CMD_ACTIVATE  = 4'h3;
+	localparam [3:0]	CMD_WRITE     = 4'h4;
+	localparam [3:0]	CMD_READ      = 4'h5;
+	localparam [3:0]	CMD_NOOP      = 4'h7;
+
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Refresh logic
+	//
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
 
 	// Calculate some metrics
+
+	// CAS_LATENCY is the clocks between the (read) command and the read
+	// data.  There must be at least one idle cycle between write data
+	// and read data.
+	localparam	CAS_LATENCY = 3;	// tCAC
+	localparam	ACTIVE_TO_RW = 3,	// tRCD
+				CK_RCD = ACTIVE_TO_RW;
+	localparam	RAS_LATENCY = 6;
+	localparam	CK_RC  = 9;	// Command period, REF to REF/ACT to ACT
+	localparam	CK_RAS = 6; // Cmd period, ACT to PRE
+	localparam	CK_RP  = 3; // Cmd period, PRE to ACT
+	localparam	CK_RRD = 2; // Cmd period, ACT[0] to ACT[1]
+	// localparam	CK_CCD = 1; // Column cmd delay time
+	localparam	CK_DPL = 2; // Input data to precharge time
+	localparam	CK_DAL = 2; // Input data to active/refresh cmd dly time
+	localparam	CK_RBD = 2; // Burst stop cmd to output high z
+	localparam	CK_WBD = 2; // Burst stop cmd to input in invalid dly tim
+	localparam	CK_RQL = 2; // Precharge cmd to out in High Z time
+	//localparam	CK_PQL =-2; // Last out to auto-precharge start time(rd)
+	localparam	CK_QMD = 2; // DQM to output delay time (read)
+	localparam	CK_MCD = 2; // Precharge cmd to out in High Z time
 
 	//
 	// First, do we *need* a refresh now --- i.e., must we break out of
@@ -110,30 +179,28 @@ module	wbsdram(i_clk,
 	// convinced that the memory is otherwise working without failure.  Of
 	// course, at that time, it may no longer be a priority ...
 	//
-	reg		need_refresh;
-	reg	[9:0]	refresh_clk;
-	wire	refresh_cmd;
+
 	assign	refresh_cmd = (!o_ram_cs_n)&&(!o_ram_ras_n)&&(!o_ram_cas_n)&&(o_ram_we_n);
 	initial	refresh_clk = 0;
 	always @(posedge i_clk)
 	begin
 		if (refresh_cmd)
-			refresh_clk <= 10'd625; // Make suitable for 80 MHz clk
+			refresh_clk <= 10'd625; // Make suitable for 50 MHz clk
 		else if (|refresh_clk)
 			refresh_clk <= refresh_clk - 10'h1;
 	end
+
 	initial	need_refresh = 1'b0;
 	always @(posedge i_clk)
 		need_refresh <= (refresh_clk == 10'h00)&&(!refresh_cmd);
 
-	reg	in_refresh;
-	reg	[2:0]	in_refresh_clk;
 	initial	in_refresh_clk = 3'h0;
 	always @(posedge i_clk)
 		if (refresh_cmd)
 			in_refresh_clk <= 3'h6;
 		else if (|in_refresh_clk)
 			in_refresh_clk <= in_refresh_clk - 3'h1;
+
 	initial	in_refresh = 0;
 	always @(posedge i_clk)
 		in_refresh <= (in_refresh_clk != 3'h0)||(refresh_cmd);
@@ -147,16 +214,6 @@ module	wbsdram(i_clk,
 `endif
 
 
-	reg	[2:0]	bank_active	[0:3];
-	reg	[(RDLY-1):0]	r_barrell_ack;
-	reg		r_pending;
-	reg		r_we;
-	reg	[22:0]	r_addr;
-	reg	[31:0]	r_data;
-	reg	[3:0]	r_sel;
-	reg	[12:0]	bank_row	[0:3];
-
-
 	//
 	// Second, do we *need* a precharge now --- must be break out of
 	// whatever we are doing to issue a precharge command?
@@ -167,16 +224,10 @@ module	wbsdram(i_clk,
 	// than this one, so ... perhaps this isn't as required?
 	//
 
-	reg	[2:0]	clocks_til_idle;
-	reg	[1:0]	m_state;
-	wire		bus_cyc;
 	assign	bus_cyc  = ((i_wb_cyc)&&(i_wb_stb)&&(!o_wb_stall));
-	reg	nxt_dmod;
 
 	// Pre-process pending operations
-	wire	pending;
 	initial	r_pending = 1'b0;
-	reg	[22:5]	fwd_addr;
 	initial	r_addr = 0;
 	//
 	// The following statement is required to complete the formal proof,
@@ -185,40 +236,56 @@ module	wbsdram(i_clk,
 	// other consequence other than the formal proof failing, since fwd_addr
 	// is always set at the beginning of any bus cycle--so it will be set
 	// before it ever gets used.
-	initial fwd_addr[22:5] = 1;
+	initial fwd_addr = 12;
 	always @(posedge i_clk)
-		if (bus_cyc)
-		begin
-			r_pending <= 1'b1;
-			r_we      <= i_wb_we;
-			r_addr    <= i_wb_addr;
-			r_data    <= i_wb_data;
-			r_sel     <= i_wb_sel;
-			fwd_addr[22:5]  <= i_wb_addr[22:5] + 18'h01;
-		end else if ((!o_ram_cs_n)&&(o_ram_ras_n)&&(!o_ram_cas_n))
-			r_pending <= 1'b0;
-		else if (!i_wb_cyc)
-			r_pending <= 1'b0;
+	if (bus_cyc)
+	begin
+		r_pending <= 1'b1;
+		r_we      <= i_wb_we;
+		r_addr    <= i_wb_addr;
+		r_data    <= i_wb_data;
+		r_sel     <= i_wb_sel;
+		fwd_addr  <= i_wb_addr + { {(AW-4){1'b0}}, 2'b11, 2'b00 };
+	end else if ((!o_ram_cs_n)&&(o_ram_ras_n)&&(!o_ram_cas_n))
+		r_pending <= 1'b0;
+	else if (!i_wb_cyc)
+		r_pending <= 1'b0;
+
+	always @(*)
+	begin
+		i_row  = i_wb_addr[AW-1:8];	// 18:8
+		i_bank = i_wb_addr[7];
+		i_col  = { i_wb_addr[6:0], 1'b0 };
+
+		r_row  = r_addr[AW-1:8];	// 18:8
+		r_bank = r_addr[7];
+		r_col  = { r_addr[6:0], 1'b0 };
+
+		fwd_row = fwd_addr[AW-1:8];
+		fwd_bank= fwd_addr[7];
+	end
 
 `ifdef	FORMAL
 	always @(*)
-		assert(fwd_addr == r_addr[22:5] + 1'b1);
+		assert(fwd_addr == r_addr + { {(AW-4){1'b0}}, 2'b11, 2'b00 });
 `endif
 
 	reg	r_bank_valid;
+	reg	fwd_bank_valid;
+
 	initial	r_bank_valid = 1'b0;
 	always @(posedge i_clk)
-		if (bus_cyc)
-			r_bank_valid <=((bank_active[i_wb_addr[9:8]][2])
-					&&(bank_row[i_wb_addr[9:8]]==i_wb_addr[22:10]));
-		else
-			r_bank_valid <= ((bank_active[r_addr[9:8]][2])
-					&&(bank_row[r_addr[9:8]]==r_addr[22:10]));
-	reg	fwd_bank_valid;
+	if (bus_cyc)
+		r_bank_valid <=((bank_active[i_bank][2])
+			&&(bank_row[i_bank]==i_row));
+	else
+		r_bank_valid <= ((bank_active[r_bank][2])
+				&&(bank_row[r_bank]==r_row));
+
 	initial	fwd_bank_valid = 0;
 	always @(posedge i_clk)
-		fwd_bank_valid <= ((bank_active[fwd_addr[9:8]][2])
-					&&(bank_row[fwd_addr[9:8]]==fwd_addr[22:10]));
+		fwd_bank_valid <= ((bank_active[fwd_bank][2])
+				&&(bank_row[fwd_bank]==fwd_row));
 
 	assign	pending = (r_pending)&&(o_wb_stall);
 
@@ -227,7 +294,7 @@ module	wbsdram(i_clk,
 	// Maintenance mode (i.e. startup) wires and logic
 	reg	maintenance_mode;
 	reg	m_ram_cs_n, m_ram_ras_n, m_ram_cas_n, m_ram_we_n, m_ram_dmod;
-	reg	[12:0]	m_ram_addr;
+	reg	[11:0]	m_ram_addr;
 	//
 	//
 	//
@@ -245,30 +312,28 @@ module	wbsdram(i_clk,
 	initial o_wb_stall = 1'b1;
 	initial	o_ram_dmod = `DMOD_GETINPUT;
 	initial	nxt_dmod = `DMOD_GETINPUT;
-	initial o_ram_cs_n  = 1'b0;
-	initial o_ram_ras_n = 1'b1;
-	initial o_ram_cas_n = 1'b1;
-	initial o_ram_we_n  = 1'b1;
+	initial	o_cmd = CMD_NOOP;
+	// initial o_ram_cs_n  = 1'b0;
+	// initial o_ram_ras_n = 1'b1;
+	// initial o_ram_cas_n = 1'b1;
+	// initial o_ram_we_n  = 1'b1;
 	initial	o_ram_dqm   = 2'b11;
 	assign	o_ram_cke   = 1'b1;
 	initial bank_active[0] = 3'b000;
 	initial bank_active[1] = 3'b000;
-	initial bank_active[2] = 3'b000;
-	initial bank_active[3] = 3'b000;
 	always @(posedge i_clk)
 	if (maintenance_mode)
 	begin
 		bank_active[0] <= 0;
 		bank_active[1] <= 0;
-		bank_active[2] <= 0;
-		bank_active[3] <= 0;
 		r_barrell_ack[(RDLY-1):0] <= 0;
 		o_wb_stall  <= 1'b1;
 		//
-		o_ram_cs_n  <= m_ram_cs_n;
-		o_ram_ras_n <= m_ram_ras_n;
-		o_ram_cas_n <= m_ram_cas_n;
-		o_ram_we_n  <= m_ram_we_n;
+		o_cmd <= { m_ram_cs_n, m_ram_ras_n, m_ram_cas_n, m_ram_we_n };
+		// o_ram_cs_n  <= m_ram_cs_n;
+		// o_ram_ras_n <= m_ram_ras_n;
+		// o_ram_cas_n <= m_ram_cas_n;
+		// o_ram_we_n  <= m_ram_we_n;
 		o_ram_dmod  <= m_ram_dmod;
 		o_ram_addr  <= m_ram_addr;
 		nxt_dmod <= `DMOD_GETINPUT;
@@ -290,11 +355,7 @@ module	wbsdram(i_clk,
 		//
 		bank_active[0] <= { bank_active[0][2], bank_active[0][2:1] };
 		bank_active[1] <= { bank_active[1][2], bank_active[1][2:1] };
-		bank_active[2] <= { bank_active[2][2], bank_active[2][2:1] };
-		bank_active[3] <= { bank_active[3][2], bank_active[3][2:1] };
 		//
-		o_ram_cs_n <= (!i_wb_cyc);
-		// o_ram_cke  <= 1'b1;
 		if (|clocks_til_idle[2:0])
 			clocks_til_idle[2:0] <= clocks_til_idle[2:0] - 3'h1;
 
@@ -302,9 +363,12 @@ module	wbsdram(i_clk,
 		//	NOOP if (i_wb_cyc)
 		//	Device deselect if (!i_wb_cyc)
 		// o_ram_cs_n  <= (!i_wb_cyc) above, NOOP
-		o_ram_ras_n <= 1'b1;
-		o_ram_cas_n <= 1'b1;
-		o_ram_we_n  <= 1'b1;
+		o_cmd <= CMD_NOOP;
+		o_cmd[3] <= 1'b1; // Deselect CS
+
+		// o_ram_ras_n <= 1'b1;
+		// o_ram_cas_n <= 1'b1;
+		// o_ram_we_n  <= 1'b1;
 
 		// o_ram_data <= r_data[15:0];
 
@@ -314,150 +378,164 @@ module	wbsdram(i_clk,
 		if ((!i_wb_cyc)||(need_refresh))
 		begin // Issue a precharge all command (if any banks are open),
 		// otherwise an autorefresh command
+			//
+			// Only relevant for precharge all, so set it here for
+			// all
+			//
+			o_ram_addr[10] <= 1'b1;	// precharge all
 			if ((bank_active[0][2:1]==2'b10)
 					||(bank_active[1][2:1]==2'b10)
-					||(bank_active[2][2:1]==2'b10)
-					||(bank_active[3][2:1]==2'b10)
 				||(|clocks_til_idle[2:0]))
 			begin
 				// Do nothing this clock
 				// Can't precharge a bank immediately after
 				// activating it
 			end else if (bank_active[0][2]
-				||(bank_active[1][2])
-				||(bank_active[2][2])
-				||(bank_active[3][2]))
+				||(bank_active[1][2]))
 			begin  // Close all active banks
-				o_ram_cs_n  <= 1'b0;
-				o_ram_ras_n <= 1'b0;
-				o_ram_cas_n <= 1'b1;
-				o_ram_we_n  <= 1'b0;
-				o_ram_addr[10] <= 1'b1;
+				o_cmd <= CMD_PRECHARGE;
+				// o_ram_cs_n  <= 1'b0;
+				// o_ram_ras_n <= 1'b0;
+				// o_ram_cas_n <= 1'b1;
+				// o_ram_we_n  <= 1'b0;
+				// o_ram_addr[10] <= 1'b1;	// precharge all
 				bank_active[0][2] <= 1'b0;
 				bank_active[1][2] <= 1'b0;
-				bank_active[2][2] <= 1'b0;
-				bank_active[3][2] <= 1'b0;
 			end else if ((|bank_active[0])
-					||(|bank_active[1])
-					||(|bank_active[2])
-					||(|bank_active[3]))
+					||(|bank_active[1]))
 				// Can't precharge yet, the bus is still busy
 			begin end else if ((!in_refresh)&&((refresh_clk[9:8]==2'b00)||(need_refresh)))
 			begin // Send autorefresh command
-				o_ram_cs_n  <= 1'b0;
-				o_ram_ras_n <= 1'b0;
-				o_ram_cas_n <= 1'b0;
-				o_ram_we_n  <= 1'b1;
+				o_cmd <= CMD_REFRESH;
+				// o_ram_cs_n  <= 1'b0;
+				// o_ram_ras_n <= 1'b0;
+				// o_ram_cas_n <= 1'b0;
+				// o_ram_we_n  <= 1'b1;
 			end // Else just send NOOP's, the default command
 		end else if (in_refresh)
 		begin
 			// NOOPS only here, until we are out of refresh
-		end else if ((pending)&&(!r_bank_valid)&&(bank_active[r_addr[9:8]]==3'h0))
+		end else if ((pending)&&(!r_bank_valid)&&(bank_active[r_bank]==3'h0))
 		begin // Need to activate the requested bank
-			o_ram_cs_n  <= 1'b0;
-			o_ram_ras_n <= 1'b0;
-			o_ram_cas_n <= 1'b1;
-			o_ram_we_n  <= 1'b1;
-			o_ram_addr  <= r_addr[22:10];
-			o_ram_bs    <= r_addr[9:8];
+			o_cmd <= CMD_ACTIVATE;
+			// o_ram_cs_n  <= 1'b0;
+			// o_ram_ras_n <= 1'b0;
+			// o_ram_cas_n <= 1'b1;
+			// o_ram_we_n  <= 1'b1;
+			o_ram_addr  <= { r_bank, r_row };
 			// clocks_til_idle[2:0] <= 1;
-			bank_active[r_addr[9:8]][2] <= 1'b1;
-			bank_row[r_addr[9:8]] <= r_addr[22:10];
+			bank_active[r_bank][2] <= 1'b1;
+			bank_row[r_bank] <= r_row;
 			//
 		end else if ((pending)&&(!r_bank_valid)
-				&&(bank_active[r_addr[9:8]]==3'b111))
+				&&(&bank_active[r_bank]))
 		begin // Need to close an active bank
-			o_ram_cs_n  <= 1'b0;
-			o_ram_ras_n <= 1'b0;
-			o_ram_cas_n <= 1'b1;
-			o_ram_we_n  <= 1'b0;
-			// o_ram_addr  <= r_addr[22:10];
+			o_cmd <= CMD_PRECHARGE;
+			// o_ram_cs_n  <= 1'b0;
+			// o_ram_ras_n <= 1'b0;
+			// o_ram_cas_n <= 1'b1;
+			// o_ram_we_n  <= 1'b0;
+			o_ram_addr[11]<= r_bank;
 			o_ram_addr[10]<= 1'b0;
-			o_ram_bs    <= r_addr[9:8];
 			// clocks_til_idle[2:0] <= 1;
-			bank_active[r_addr[9:8]][2] <= 1'b0;
-			// bank_row[r_addr[9:8]] <= r_addr[22:10];
+			bank_active[r_bank][2] <= 1'b0;
 		end else if ((pending)&&(!r_we)
-				&&(bank_active[r_addr[9:8]][2])
+				&&(bank_active[r_bank][2])
 				&&(r_bank_valid)
 				&&(clocks_til_idle[2:0] < 4))
 		begin // Issue the read command
-			o_ram_cs_n  <= 1'b0;
-			o_ram_ras_n <= 1'b1;
-			o_ram_cas_n <= 1'b0;
-			o_ram_we_n  <= 1'b1;
-			o_ram_addr  <= { 4'h0, r_addr[7:0], 1'b0 };
-			o_ram_bs    <= r_addr[9:8];
+			o_cmd <= CMD_READ;
+			// o_ram_cs_n  <= 1'b0;
+			// o_ram_ras_n <= 1'b1;
+			// o_ram_cas_n <= 1'b0;
+			// o_ram_we_n  <= 1'b1;
+			o_ram_addr  <= { r_bank, 3'h0, r_col };
 			clocks_til_idle[2:0] <= 4;
 
 			o_wb_stall <= 1'b0;
 			r_barrell_ack[(RDLY-1)] <= 1'b1;
 		end else if ((pending)&&(r_we)
-			&&(bank_active[r_addr[9:8]][2])
+			&&(bank_active[r_bank][2])
 			&&(r_bank_valid)
 			&&(clocks_til_idle[2:0] == 0))
 		begin // Issue the write command
-			o_ram_cs_n  <= 1'b0;
-			o_ram_ras_n <= 1'b1;
-			o_ram_cas_n <= 1'b0;
-			o_ram_we_n  <= 1'b0;
-			o_ram_addr  <= { 4'h0, r_addr[7:0], 1'b0 };
-			o_ram_bs    <= r_addr[9:8];
+			o_cmd <= CMD_WRITE;
+			// o_ram_cs_n  <= 1'b0;
+			// o_ram_ras_n <= 1'b1;
+			// o_ram_cas_n <= 1'b0;
+			// o_ram_we_n  <= 1'b0;
+			o_ram_addr  <= { r_bank, 3'h0, r_col };
 			clocks_til_idle[2:0] <= 3'h1;
 
 			o_wb_stall <= 1'b0;
 			r_barrell_ack[1] <= 1'b1;
-			// o_ram_data <= r_data[31:16];
+			// o_ram_data <= r_data[DW-1:16];
 			//
 			o_ram_dmod <= `DMOD_PUTOUTPUT;
 			nxt_dmod <= `DMOD_PUTOUTPUT;
-		end else if ((r_pending)&&(r_addr[7:0] >= 8'hf0)
+		end else if (OPT_FWD_ADDRESS && r_pending &&(fwd_bank != r_bank)
 				&&(!fwd_bank_valid))
 		begin
+			o_ram_addr  <= { fwd_bank, fwd_row };
+			bank_row[fwd_bank] <= fwd_row;
+
 			// Do I need to close the next bank I'll need?
-			if (bank_active[fwd_addr[9:8]][2:1]==2'b11)
+			if (bank_active[fwd_bank][2:1]==2'b11)
 			begin // Need to close the bank first
-				o_ram_cs_n <= 1'b0;
-				o_ram_ras_n <= 1'b0;
-				o_ram_cas_n <= 1'b1;
-				o_ram_we_n  <= 1'b0;
+				o_cmd <= CMD_PRECHARGE;
+				// o_ram_cs_n  <= 1'b0;
+				// o_ram_ras_n <= 1'b0;
+				// o_ram_cas_n <= 1'b1;
+				// o_ram_we_n  <= 1'b0;
+				// Close the bank
 				o_ram_addr[10] <= 1'b0;
-				o_ram_bs       <= fwd_addr[9:8];
-				bank_active[fwd_addr[9:8]][2] <= 1'b0;
-			end else if (bank_active[fwd_addr[9:8]]==3'b000)
+				bank_active[fwd_bank][2] <= 1'b0;
+			end else if (bank_active[fwd_bank]==3'b000)
 			begin
 				// Need to (pre-)activate the next bank
-				o_ram_cs_n  <= 1'b0;
-				o_ram_ras_n <= 1'b0;
-				o_ram_cas_n <= 1'b1;
-				o_ram_we_n  <= 1'b1;
-				o_ram_addr  <= fwd_addr[22:10];
-				o_ram_bs    <= fwd_addr[9:8];
+				o_cmd <= CMD_ACTIVATE;
+				// o_ram_cs_n  <= 1'b0;
+				// o_ram_ras_n <= 1'b0;
+				// o_ram_cas_n <= 1'b1;
+				// o_ram_we_n  <= 1'b1;
 				// clocks_til_idle[3:0] <= 1;
-				bank_active[fwd_addr[9:8]] <= 3'h4;
-				bank_row[fwd_addr[9:8]] <= fwd_addr[22:10];
+				bank_active[fwd_bank] <= 3'h4;
 			end
 		end
 		if (!i_wb_cyc)
 			r_barrell_ack <= 0;
 	end
 
-	reg		startup_hold;
-	reg	[15:0]	startup_idle;
-	initial	startup_idle = 16'd20500;
+	assign	o_ram_cs_n  = o_cmd[3];
+	assign	o_ram_ras_n = o_cmd[2];
+	assign	o_ram_cas_n = o_cmd[1];
+	assign	o_ram_we_n  = o_cmd[0];
+
+	// localparam	STARTUP_WAIT_NS = 100_000; // 100us
+	localparam	CK_STARTUP_WAIT = CLOCK_FREQUENCY_HZ / 10_000;
+	reg					startup_hold;
+	reg	[$clog2(CK_STARTUP_WAIT)-1:0]	startup_idle;
+
+`ifndef	FORMAL
+	initial	startup_idle = CK_STARTUP_WAIT[$clog2(CK_STARTUP_WAIT)-1:0];
+`endif
 	initial	startup_hold = 1'b1;
 	always @(posedge i_clk)
-		if (|startup_idle)
-			startup_idle <= startup_idle - 1'b1;
+	if (|startup_idle)
+		startup_idle <= startup_idle - 1'b1;
 	always @(posedge i_clk)
 		startup_hold <= |startup_idle;
 `ifdef	FORMAL
 	always @(*)
-		if (startup_hold)
-			assert(maintenance_mode);
+	if (startup_hold)
+	begin
+		assert(maintenance_mode);
+		assert(m_state == `RAM_POWER_UP);
+	end
+
 	always @(*)
-		if (|startup_idle)
-			assert(startup_hold);
+	if (|startup_idle)
+		assert(startup_hold);
 `endif
 
 	reg	[3:0]	maintenance_clocks;
@@ -465,7 +543,13 @@ module	wbsdram(i_clk,
 	initial	maintenance_mode = 1'b1;
 	initial	maintenance_clocks = 4'hf;
 	initial	maintenance_clocks_zero = 1'b0;
-	initial	m_ram_addr  = { 3'b000, 1'b0, 2'b00, 3'b010, 1'b0, 3'b001 };
+	localparam [11:0] MODE_COMMAND =
+			{ 5'b00000,	// Burst reads and writes
+			3'b011,		// 3 clock CAS latency
+			1'b0,		// Sequential (not interleaved)
+			3'b001		// 32-bit burst length
+			};
+	initial	m_ram_addr  = MODE_COMMAND;
 	initial	m_state = `RAM_POWER_UP;
 	initial	m_ram_cs_n  = 1'b1;
 	initial	m_ram_ras_n = 1'b1;
@@ -482,36 +566,39 @@ module	wbsdram(i_clk,
 		// The only time the RAM address matters is when we set
 		// the mode.  At other times, addr[10] matters, but the rest
 		// is ignored.  Hence ... we'll set it to a constant.
-		m_ram_addr  <= { 3'b000, 1'b0, 2'b00, 3'b010, 1'b0, 3'b001 };
+		m_ram_addr  <= MODE_COMMAND;
 		if (m_state == `RAM_POWER_UP)
 		begin
 			// All signals must be held in NOOP state during powerup
 			// m_ram_cke <= 1'b1;
-			m_ram_cs_n  <= 1'b0;
-			m_ram_ras_n <= 1'b1;
-			m_ram_cas_n <= 1'b1;
-			m_ram_we_n  <= 1'b1;
+			{ m_ram_cs_n,
+			  m_ram_ras_n,
+			  m_ram_cas_n,
+			  m_ram_we_n  } <= CMD_NOOP;
 			m_ram_dmod  <= `DMOD_GETINPUT;
 			if (!startup_hold)
 			begin
 				m_state <= `RAM_INITIAL_REFRESH;
 				maintenance_clocks <= 4'ha;
 				maintenance_clocks_zero <= 1'b0;
-				m_ram_cs_n  <= 1'b0;
-				m_ram_ras_n <= 1'b0;
-				m_ram_cas_n <= 1'b1;
-				m_ram_we_n  <= 1'b0;
+				{ m_ram_cs_n,
+				  m_ram_ras_n,
+				  m_ram_cas_n,
+				  m_ram_we_n  } <= CMD_PRECHARGE;
+				// m_ram_cs_n  <= 1'b0;
+				// m_ram_ras_n <= 1'b0;
+				// m_ram_cas_n <= 1'b1;
+				// m_ram_we_n  <= 1'b0;
 				m_ram_addr[10] <= 1'b1;
 			end
 		end else if (m_state == `RAM_INITIAL_REFRESH)
 		begin
 			//
-			m_ram_cs_n  <= 1'b0;
-			m_ram_ras_n <= 1'b0;
-			m_ram_cas_n <= 1'b0;
-			m_ram_we_n  <= 1'b1;
+			{ m_ram_cs_n,
+			  m_ram_ras_n,
+			  m_ram_cas_n,
+			  m_ram_we_n  } <= CMD_REFRESH;
 			m_ram_dmod  <= `DMOD_GETINPUT;
-			// m_ram_addr  <= { 3'b000, 1'b0, 2'b00, 3'b010, 1'b0, 3'b001 };
 			if (maintenance_clocks_zero)
 			begin
 				m_state <= `RAM_SET_MODE;
@@ -521,11 +608,15 @@ module	wbsdram(i_clk,
 			end
 		end else if (m_state == `RAM_SET_MODE)
 		begin
+			{ m_ram_cs_n,
+			  m_ram_ras_n,
+			  m_ram_cas_n,
+			  m_ram_we_n  } <= CMD_SET_MODE;
 			// Set mode cycle
 			m_ram_cs_n  <= 1'b1;
-			m_ram_ras_n <= 1'b0;
-			m_ram_cas_n <= 1'b0;
-			m_ram_we_n  <= 1'b0;
+			// m_ram_ras_n <= 1'b0;
+			// m_ram_cas_n <= 1'b0;
+			// m_ram_we_n  <= 1'b0;
 			m_ram_dmod  <= `DMOD_GETINPUT;
 
 			if (maintenance_clocks_zero)
@@ -537,18 +628,21 @@ module	wbsdram(i_clk,
 	if (nxt_dmod)
 		o_ram_data <= r_data[15:0];
 	else
-		o_ram_data <= r_data[31:16];
+		o_ram_data <= r_data[DW-1:16];
+
+	initial	nxt_sel = 2'b11;
+	always @(posedge i_clk)
+		nxt_sel <= r_sel[1:0];
 
 	always @(posedge i_clk)
 	if (maintenance_mode)
 		o_ram_dqm <= 2'b11;
-	else if (r_we)
-	begin
-		if (nxt_dmod)
-			o_ram_dqm <= ~r_sel[1:0];
-		else
-			o_ram_dqm <= ~r_sel[3:2];
-	end else
+	else if (nxt_dmod)
+		o_ram_dqm <= ~nxt_sel;
+	else if (i_wb_cyc && pending && r_we && bank_active[r_bank][2]
+			&& r_bank_valid && clocks_til_idle[2:0] == 0)
+		o_ram_dqm <= ~r_sel[3:2];
+	else
 		o_ram_dqm <= 2'b00;
 
 `ifdef	VERILATOR
@@ -586,12 +680,12 @@ module	wbsdram(i_clk,
 	//
 	reg	trigger;
 	always @(posedge i_clk)
-		trigger <= ((o_wb_data[15:0]==o_wb_data[31:16])
+		trigger <= ((o_wb_data[15:0]==o_wb_data[DW-1:16])
 			&&(o_wb_ack)&&(!i_wb_we));
 
 
 	assign	o_debug = { i_wb_cyc, i_wb_stb, i_wb_we, o_wb_ack, o_wb_stall, // 5
-		o_ram_cs_n, o_ram_ras_n, o_ram_cas_n, o_ram_we_n, o_ram_bs,//6
+		o_ram_cs_n, o_ram_ras_n, o_ram_cas_n, o_ram_we_n, 2'b00,//6
 			o_ram_dmod, r_pending, 				//  2
 			trigger,					//  1
 			o_ram_addr[9:0],				// 10 more
@@ -602,8 +696,8 @@ module	wbsdram(i_clk,
 
 	// Make Verilator happy
 	// verilator lint_off UNUSED
-	wire	[2:0]	unused;
-	assign	unused = { fwd_addr[7:5] };
+	wire		unused;
+	assign	unused = &{ 1'b0, fwd_addr[6:0], i_col };
 	// verilator lint_on  UNUSED
 `ifdef	FORMAL
 	localparam	REFRESH_CLOCKS = 6;
@@ -613,8 +707,12 @@ module	wbsdram(i_clk,
 	wire	f_reset;
 
 	always @(*)
-		if (o_ram_dmod)
-			assume(i_ram_data == o_ram_data);
+	if (o_ram_dmod)
+		assume(i_ram_data == o_ram_data);
+
+	wire			o_ram_bank;
+
+	assign	o_ram_bank  = o_ram_addr[11];
 
 	initial	f_past_valid = 1'b0;
 	always @(posedge i_clk)
@@ -715,19 +813,17 @@ module	wbsdram(i_clk,
 `define	F_REFRESH_S		4'b0001
 `define	F_NOOP_S		4'b0111
 
-	wire	[22:0]	f_next_addr;
-	always @(*)
-	begin
-		f_next_addr[22:8] = r_addr[22:8] + 1'b1;
-		f_next_addr[7:0] = 0;
-	end
+	wire	[AW-1:0]	f_next_addr;
+	wire	[10:0]		f_next_row, f_this_row;
+	wire			f_next_bank, f_this_bank;
 
-	wire	[12:0]	f_next_row, f_this_row;
-	wire	[1:0]	f_next_bank, f_this_bank;
-	assign	f_next_row  = f_next_addr[22:10];
-	assign	f_next_bank = f_next_addr[9:8];
-	assign	f_this_bank = r_addr[9:8];
-	assign	f_this_row  = r_addr[22:10];
+	always @(*)
+		f_next_addr[AW-1:0] = r_addr[AW-1:0] + 5'b01100;
+
+	assign	f_next_row  = f_next_addr[AW-1:8];
+	assign	f_next_bank = f_next_addr[7];
+	assign	f_this_bank = r_bank;
+	assign	f_this_row  = r_row;
 
 	always @(*)
 	if (o_ram_cs_n==1'b0) case(f_cmd)
@@ -741,56 +837,58 @@ module	wbsdram(i_clk,
 	default: assert(f_cmd[3:0] == `F_NOOP_S);
 	endcase
 
+	always @(*)
+	if (o_cmd[3:0] == CMD_SET_MODE)
+	begin
+		assert(o_ram_addr == MODE_COMMAND);
+		assert(maintenance_mode);
+	end
+
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!maintenance_mode))
 	case(f_cmd)
 	`F_BANK_ACTIVATE:	begin
 		// Can only activate de-activated banks
-		assert(bank_active[o_ram_bs][1:0] == 0);
+		assert(bank_active[o_ram_bank][1:0] == 0);
 		// Need to activate the right bank
-		if (o_ram_bs == $past(f_this_bank))
-			assert($past(f_this_row)==o_ram_addr);
-		else if (o_ram_bs != 0)
-		begin
-			assert(o_ram_bs == $past(f_next_bank));
-			assert($past(f_this_row)==o_ram_addr);
-		end else begin
-			assert(o_ram_bs == $past(f_next_bank));
-			assert($past(f_next_row)==o_ram_addr);
-		end end
+		if (o_ram_bank == $past(f_this_bank))
+			assert($past(f_this_row)==o_ram_addr[10:0]);
+		else
+			assert($past(f_next_row)==o_ram_addr[10:0]);
+		end
 	`F_BANK_PRECHARGE:	begin
 		// Can only precharge (de-active) a fully active bank
-		assert(bank_active[o_ram_bs] == 3'b011);
+		assert(bank_active[o_ram_bank] == 3'b011);
 		end
 	`F_PRECHARGE_ALL:	begin
 		// If pre-charging all, one of the banks must be active and in
 		// need of a pre-charge
 		assert(
 			(bank_active[0] == 3'b011)
-			||(bank_active[1] == 3'b011)
-			||(bank_active[2] == 3'b011)
-			||(bank_active[3] == 3'b011) );
+			||(bank_active[1] == 3'b011));
 		end
 	`F_WRITE:	begin
 		assert($past(r_we));
-		assert(bank_active[o_ram_bs] == 3'b111);
-		assert(bank_row[o_ram_bs] == $past(f_this_row));
-		assert(o_ram_bs == $past(f_this_bank));
+		assert(bank_active[o_ram_bank] == 3'b111);
+		assert(bank_row[o_ram_bank] == $past(f_this_row));
+		assert(o_ram_bank == $past(f_this_bank));
 		assert(o_ram_addr[0] == 1'b0);
+		assert(o_ram_addr[7:0] == $past(r_col));
+		assert(o_ram_data == $past(r_data[31:16]));
+		assert(o_ram_dqm == ~$past(r_sel[3:2]));
 		end
 	`F_READ:	begin
 		assert(!$past(r_we));
-		assert(bank_active[o_ram_bs] == 3'b111);
-		assert(bank_row[o_ram_bs] == $past(f_this_row));
-		assert(o_ram_bs == $past(f_this_bank));
+		assert(bank_active[o_ram_bank] == 3'b111);
+		assert(bank_row[o_ram_bank] == $past(f_this_row));
+		assert(o_ram_bank == $past(f_this_bank));
 		assert(o_ram_addr[0] == 1'b0);
+		assert(o_ram_addr[7:0] == $past(r_col));
 		end
 	`F_REFRESH:	begin
 		// When giving a reset command, *all* banks must be inactive
 		assert( (bank_active[0] == 3'h0)
-			&&(bank_active[1] == 3'h0)
-			&&(bank_active[2] == 3'h0)
-			&&(bank_active[3] == 3'h0) );
+			&&(bank_active[1] == 3'h0));
 		end
 	default: assert((o_ram_cs_n)||(f_cmd[3:0] == `F_NOOP_S));
 	endcase
@@ -799,9 +897,9 @@ module	wbsdram(i_clk,
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(maintenance_mode)))
 	begin
-		for(f_k=0; f_k<4; f_k=f_k+1)
+		for(f_k=0; f_k<2; f_k=f_k+1)
 			if (((f_cmd[3:0] != `F_BANK_ACTIVATE_S))
-		 			||(o_ram_bs != f_k[1:0]))
+		 			||(o_ram_bank != f_k[1:0]))
 				assert($stable(bank_row[f_k[1:0]]));
 	end
 
@@ -823,17 +921,19 @@ module	wbsdram(i_clk,
 	if ((f_past_valid)&&(!$past(maintenance_mode)))
 	case($past(f_cmd))
 	`F_BANK_ACTIVATE: begin
-		assert(bank_active[$past(o_ram_bs)] == 3'b110);
-		assert(bank_row[$past(o_ram_bs)] == $past(o_ram_addr));
+		assert(bank_active[$past(o_ram_bank)] == 3'b110);
+		assert(bank_row[$past(o_ram_bank)] == $past(o_ram_addr[10:0]));
 		end
 	`F_BANK_PRECHARGE: begin
-		assert(bank_active[$past(o_ram_bs)] == 3'b001);
+		assert(bank_active[$past(o_ram_bank)] == 3'b001);
 		end
 	`F_PRECHARGE_ALL: begin
 		assert(bank_active[0][2] == 1'b0);
 		assert(bank_active[1][2] == 1'b0);
-		assert(bank_active[2][2] == 1'b0);
-		assert(bank_active[3][2] == 1'b0);
+		end
+	`F_WRITE: begin
+		assert(o_ram_data == $past(r_data[15:0],2));
+		assert(o_ram_dqm == ~$past(r_sel[1:0]));
 		end
 	// `F_WRITE:
 	// `F_READ:
@@ -843,24 +943,45 @@ module	wbsdram(i_clk,
 	default: begin end
 	endcase
 
+
+`ifdef	BROKEN
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(maintenance_mode)))
 	begin
 		assert(bank_active[0][1:0] == $past(bank_active[0][2:1]));
 		assert(bank_active[1][1:0] == $past(bank_active[1][2:1]));
-		assert(bank_active[2][1:0] == $past(bank_active[2][2:1]));
-		assert(bank_active[3][1:0] == $past(bank_active[3][2:1]));
 	end
+`else
+
+	reg	[1:0]	f_last_bank_active0, f_last_bank_active1;
+
+	always @(posedge i_clk)
+	begin
+		f_last_bank_active0 <= bank_active[0][2:1];
+		f_last_bank_active1 <= bank_active[1][2:1];
+	end
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(maintenance_mode)))
+	begin
+		assert(bank_active[0][1:0] == f_last_bank_active0);
+		assert(bank_active[1][1:0] == f_last_bank_active1);
+	end
+
+`endif
 
 	always @(*)
 	if ((in_refresh)||(maintenance_mode))
 	begin
 		assert(bank_active[0] == 0);
 		assert(bank_active[1] == 0);
-		assert(bank_active[2] == 0);
-		assert(bank_active[3] == 0);
 	end
 
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Bus (ack) checks
+	//
+	////////////////////////////////////////////////////////////////////////
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(o_wb_ack)))
 		assert(!o_wb_ack);
@@ -885,45 +1006,14 @@ module	wbsdram(i_clk,
 	if ((f_past_valid)&&(i_wb_cyc))
 		assert(f_outstanding == (f_ispending ? 1'b1:1'b0) + f_acks_pending);
 
-	always @(posedge i_clk)
-		if (!i_wb_stb)
-		begin
-			restrict($stable(i_wb_we));
-			restrict($stable(i_wb_addr));
-			restrict($stable(i_wb_data));
-			if ((i_wb_stb)&&(!i_wb_we))
-				restrict(i_wb_data == 0);
-		end
-	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(i_wb_stb))&&(i_wb_stb))
-		restrict(!$past(i_wb_cyc));
 
-`ifdef	SHADOW_MEMORY
-	reg	[15:0]		f_shadow_memory	[0:((1<<26)-1)];
-	reg	[13+13-1:0]	f_shadow_addr;
-	always @(*)
-		f_shadow_addr <= { bank_row[o_ram_bs], o_ram_addr[8:0] };
-	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(f_past_valid,4)
-			&&(!$past(maintenance_mode,4)))
-		if (f_cmd == `F_WRITE)
-		begin
-			f_shadow_memory[f_shadow_addr] <= o_ram_data;
-			assert(o_ram_dmod==`DMOD_PUTOUTPUT);
-			assert(o_ram_addr[0] == 1'b0);
-		end else if ($past(f_cmd)== `F_WRITE)
-		begin
-			f_shadow_memory[f_shadow_addr[26-1:1], 1'b1}] <= data;
-			assert(o_ram_dmod==`DMOD_PUTOUTPUT);
-		end else if ($past(f_cmd,4)==`F_READ)
-		begin
-			assert($past(o_ram_dmod)==`DMOD_GETINPUT);
-			assert(o_ram_dmod==`DMOD_GETINPUT);
-			assume(o_wb_data[31:16] == f_shadow_memory[$past(f_shadow_addr,4)]);
-			assume(o_wb_data[15: 0] == f_shadow_memory[{ $past(f_shadow_addr[25:1],4), 1'b1}]);
-			assert(r_barrell_ack[0]);
-		end
-`endif
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Maintenance mode assertions
+	//
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
 	always @(posedge i_clk)
 	if (startup_hold)
 		assert(m_state == `RAM_POWER_UP);
@@ -989,8 +1079,103 @@ module	wbsdram(i_clk,
 		||(m_state == `RAM_INITIAL_REFRESH)
 		||(m_state == `RAM_SET_MODE) );
 
+	always @(*)
+	if (!f_past_valid)
+	begin
+		assume(startup_idle <= CK_STARTUP_WAIT[$clog2(CK_STARTUP_WAIT)-1:0]);
+		assume(startup_idle > 3);
+	end
+
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Ad-hoc assertions
+	//
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(o_wb_ack)))
 		assert(!o_wb_ack);
-`endif
+
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Some cover statements
+	//
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
+	reg	f_prior_write, f_prior_read,
+		f_prior_wbank, f_prior_rbank;
+	reg	[10:0]	f_prior_wrow, f_prior_rrow;
+
+	initial	f_prior_write = 0;
+	initial	f_prior_read  = 0;
+
+	always @(posedge i_clk)
+	if ((f_nacks != f_nreqs)&&(!i_wb_cyc))
+		f_prior_write <= 1'b0;
+	else if (o_cmd == CMD_WRITE)
+	begin
+		f_prior_write <= 1'b1;
+		f_prior_wbank <= o_ram_bank;
+		f_prior_wrow  <= $past(r_row);
+	end
+
+	always @(posedge i_clk)
+	if ((f_nacks != f_nreqs)&&(!i_wb_cyc))
+		f_prior_read <= 1'b0;
+	else if (o_cmd == CMD_READ)
+	begin
+		f_prior_read <= 1'b1;
+		f_prior_rbank <= o_ram_bank;
+		f_prior_rrow  <= $past(r_row);
+	end
+
+	always @(posedge i_clk)
+	begin
+		cover(o_cmd == CMD_WRITE);
+		cover(o_cmd == CMD_READ);
+
+		cover(o_cmd == CMD_WRITE && f_prior_write);
+		cover(o_cmd == CMD_WRITE && f_prior_read);
+		//
+		cover(o_cmd == CMD_READ  && f_prior_write);
+		cover(o_cmd == CMD_READ  && f_prior_read);
+
+		cover(o_cmd == CMD_WRITE && f_prior_write && o_ram_bank != f_prior_wbank);
+		cover(o_cmd == CMD_READ  && f_prior_read  && o_ram_bank != f_prior_rbank);
+		cover(o_cmd == CMD_WRITE && f_prior_write && o_ram_bank == f_prior_rbank);
+		cover(o_cmd == CMD_READ  && f_prior_read  && o_ram_bank == f_prior_rbank);
+		//
+		cover(o_cmd == CMD_READ  && f_prior_read  && o_ram_bank == f_prior_rbank
+			&& f_prior_rrow != $past(r_row));
+	end
+
+//
+`ifdef	VERIFIC
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Ad-hoc assertions
+	//
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+	generate for(gbank=0; gbank<2; gbank=gbank+1)
+	begin
+		// One activate to another of a different bank
+		assert property (@(posedge i_clk)
+			(o_cmd == CMD_ACTIVATE)&&(o_ram_addr[10] == gbank)
+			|=> (o_cmd != CMD_ACTIVATE
+				|| o_ram_addr[10] != gbank) [*CK_RRD-1]);
+
+		// One activate to another of the same bank
+		assert property (@(posedge i_clk)
+			(o_cmd == CMD_ACTIVATE)&&(o_ram_addr[10] == gbank)
+			|=> (o_cmd != CMD_READ && o_cmd != CMD_WRITE)
+				|| o_ram_addr[10] != gbank) [*CK_RCD-1]);
+	end endgenerate
+
+`endif // VERIFIC
+`endif // FORMAL
 endmodule
