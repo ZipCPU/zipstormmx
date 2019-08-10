@@ -87,7 +87,8 @@ $(VDIRFB)/Vmain.cpp: $(VDIRFB)/Vmain.h
 $(VDIRFB)/Vmain.mk:  $(VDIRFB)/Vmain.h
 
 $(VDIRFB)/Vmain.h: main.v $(VFLIST)
-	$(VERILATOR) $(VFLAGS) main.v
+	@echo "Running Verilator"
+	@$(VERILATOR) $(VFLAGS) main.v
 
 cpudefs.h: cpu/cpudefs.v
 	@echo "Building cpudefs.h"
@@ -119,8 +120,10 @@ $(VDIRFB)/V%__ALL.a: $(VDIRFB)/V%.mk
 #
 #
 $(JSON): toplevel.v $(VFLIST)
-	@echo $(YOSYS) -ql yosys.log -p 'synth_ice40 -json $(JSON) -top toplevel' ...
+	@echo "Running Yosys"
 	@$(YOSYS) -ql yosys.log -p 'synth_ice40 -json $(JSON) -top toplevel' $^
+
+# @echo $(YOSYS) -ql yosys.log -p 'synth_ice40 -json $(JSON) -top toplevel' ...
 
 .PHONY: yosys
 yosys: $(JSON)
@@ -128,6 +131,7 @@ yosys: $(JSON)
 DEVFLAGS := --hx8k --package tq144:4k
 PNRFLAGS := --placer heap
 $(ASCFILE): $(JSON) $(PCFFILE)
+	@echo "Running NextPNR"
 	$(NEXTPNR) $(DEVFLAGS) --freq 50 $(PNRFLAGS) --json $(JSON) --pcf $(PCFFILE) --asc $(ASCFILE) |& tee pnr.log
 nextpnr: $(ASCFILE)
 

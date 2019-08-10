@@ -1,0 +1,11 @@
+set_io	i_clk		60
+
+# Bottom Pmod, on MX1, farthest from position 1
+# set_io	i_rts_n		38
+set_io	o_uart_tx	37
+# set_io	i_uart_rx	32
+# set_io	o_cts_n		31
+##
+#
+set_io	o_led[0]	55
+set_io	o_led[1]	56

@@ -1,12 +1,11 @@
 ################################################################################
 ##
-## Filename:	auto-data/Makefile
+## Filename: 	wbscopc.txt
 ##
 ## Project:	ZipSTORM-MX, an iCE40 ZipCPU demonstration project
 ##
-## Purpose:	To coordinate the build of the glue logic holding this design
-##		together via autofpga.
-##
+## Purpose:	A generic scope description, from which other internal wbscopes
+##		may depend upon
 ##
 ## Creator:	Dan Gisselquist, Ph.D.
 ##		Gisselquist Technology, LLC
@@ -37,36 +36,12 @@
 ################################################################################
 ##
 ##
-.PHONY: all
-all:	data
-#
-# Could also depend upon load, if desired, but not necessary
-#
-# This is the list of components that will form our project.  Each file consists
-# of parts and pieces of our project that autofpga will copy/paste into our
-# main project files.
-#
-BASE    := global.txt dlyarbiter.txt
-AUX     := version.txt buserr.txt pic.txt pwrcount.txt
-IO      := spio.txt # gpio.txt
-RTC     := # rtclight.txt # rtcdate.txt
-DBGBUS  := hbconsole.txt
-# MEMORY  := bkram.txt qspiflash.txt # spixpress.txt # sdram.txt
-MEMORY  := bkram.txt spixpress.txt sdram.txt
-CPU     := zipbones.txt
-SCOPES  := sdramscope.txt refreshcount.txt # spixscope.txt # cpuscope.txt
-LDSCRIPT:= mem_all.txt mem_flash_bkram.txt mem_bkram_only.txt mem_sdram_bkram.txt
-DATA := clock50.txt $(BASE) $(AUX) $(IO) $(RTC)			\
-	$(DBGBUS) $(MEMORY) $(CPU) $(SCOPES) $(LDSCRIPT)
-
-AUTOFPGA := autofpga
-$(AUTOFPGA):
-
-.PHONY: data
-data: $(AUTOFPGA) $(DATA) blackmx.pcf
-	$(AUTOFPGA) -d -o . $(DATA)
-
-clean:
-	rm -f toplevel.v main.v regdefs.h regdefs.cpp board.h board.ld
-	rm -f rtl.make.inc main_tb.cpp
-	rm -f dump.txt
+@PREFIX=scopc
+@DEVID=SCOPC
+@ACCESS=@$(DEVID)_SCOPC
+@CORE=wbscopc
+@REGS.NOTE=// @$(PREFIX) compressed scope
+@RTL.MAKE.GROUP=SCOPC
+@TRIGGER=@$(TARGET)_debug[31]
+@DEBUG=@$(TARGET)_debug[30:0]
+@INCLUDEFILE=wbscope.txt

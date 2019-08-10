@@ -433,8 +433,10 @@
 @INT.WATCHDOG.PIC=cpu_reset
 @INT.WATCHDOG.WIRE=watchdog_reset
 @INT.RESET.PIC=cpu_reset
-@INT.RESET.WIRE=i_reset
+@INT.RESET.WIRE=wd_ireset
 @MAIN.INSERT=
+	assign	wd_ireset = i_reset;
+
 	ziptimer #(.VW(16), .RELOADABLE(0))
 		@$(PREFIX)i(i_clk, i_reset, 1'b1,
 			wb_cyc, (wb_stb)&&(@$(PREFIX)_sel), wb_we, wb_data,

@@ -1,0 +1,17 @@
+[tasks]
+prf
+# cvr
+
+[options]
+prf: mode prove
+depth 2
+
+[engines]
+smtbmc
+
+[script]
+read -formal genuctrl.v
+prep -top genuctrl
+
+[files]
+../../rtl/genuctrl.v

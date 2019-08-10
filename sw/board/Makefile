@@ -36,7 +36,7 @@
 ##
 ##
 .PHONY: all
-PROGRAMS := cputest # hello
+PROGRAMS := cputest hello memtest
 all:	$(PROGRAMS)
 #
 #
@@ -49,8 +49,11 @@ RDELF	:= zip-readelf
 OBJDUMP := zip-objdump
 SOURCES := cputest.c hello.c
 HEADERS := $(foreach hdr,$(subst .c,.o,$(SOURCES)),$(wildcard $(hdr))) board.h
+LSCRIPTS:= $(wildcard *.ld)
 LDSCRIPT:= -Tflash.ld
 LFLAGS  := $(LDSCRIPT) -L../zlib
+FLASH   := -Tflash.ld -L../zlib
+SDRAM   := -Tboard.ld -L../zlib
 INCS    := -I../zlib -I../../rtl -I.
 CFLAGS  := -O3 $(INCS)
 LIBS    := -lc -lzipstormmx
@@ -98,8 +101,11 @@ $(OBJDIR)/hello.o: hello.c
 $(OBJDIR)/gettysburg.o: gettysburg.c
 	$(CC) -O3 -c $< -o $@
 
-hello: $(OBJDIR)/hello.o flash.ld
+hello: $(OBJDIR)/hello.o $(LSCRIPTS)
 	$(CC) $(CFLAGS) $(LFLAGS) $< $(LIBS) -o $@
+
+memtest: $(OBJDIR)/memtest.o bkram.ld
+	$(CC) -ffreestanding -Tbkram.ld $(CFLAGS) $< -o $@
 
 define	mk-objdir
 	@bash -c "if [ ! -e $(OBJDIR) ]; then mkdir -p $(OBJDIR); fi"

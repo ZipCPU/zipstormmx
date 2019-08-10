@@ -38,14 +38,14 @@
 ##
 .PHONY: all
 all:
-PROGRAMS := wbregs flashid dumpflash spixscope zipload zipstate dbgscope zipdbg netuart
+PROGRAMS := wbregs flashid dumpflash zipload zipstate zipdbg netuart
 #
-SCOPES :=
+SCOPES := sdramscope dbgscope spixscope
 all: $(PROGRAMS) $(SCOPES)
 CXX := g++
 OBJDIR := obj-pc
 BUSSRCS := hexbus.cpp llcomms.cpp regdefs.cpp byteswap.cpp
-SCOPESRC:= spixscope.cpp dbgscope.cpp
+SCOPESRC:= spixscope.cpp dbgscope.cpp sdramscope.cpp
 SOURCES := wbregs.cpp netuart.cpp flashid.cpp flashdrvr.cpp $(BUSSRCS) $(SCOPESRC)
 HEADERS := llcomms.h port.h hexbus.h devbus.h
 OBJECTS := $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(SOURCES)))
@@ -104,6 +104,8 @@ zipload: $(BUSOBJS) $(OBJDIR)/zipelf.o
 spixscope: $(OBJDIR)/spixscope.o $(OBJDIR)/scopecls.o $(BUSOBJS)
 	$(CXX) -g $^ -o $@
 dbgscope: $(OBJDIR)/dbgscope.o $(OBJDIR)/scopecls.o $(BUSOBJS)
+	$(CXX) -g $^ -o $@
+sdramscope: $(OBJDIR)/sdramscope.o $(OBJDIR)/scopecls.o $(BUSOBJS)
 	$(CXX) -g $^ -o $@
 #
 #

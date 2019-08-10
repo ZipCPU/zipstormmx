@@ -4,9 +4,9 @@ cvr
 
 [options]
 prf: mode  prove
-prf: depth 32
+prf: depth 41
 cvr: mode  cover
-cvr: depth 200
+cvr: depth 60
 
 [engines]
 smtbmc boolector
@@ -14,8 +14,10 @@ smtbmc boolector
 [script]
 read -formal wbsdram.v
 read -formal fwb_slave.v
+read -formal genuctrl.v
 prep -top wbsdram
 
 [files]
 ../../rtl/wbsdram.v
 fwb_slave.v
+../../rtl/genuctrl.v

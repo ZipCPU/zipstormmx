@@ -1,11 +1,29 @@
+# Onboard 25Mhz oscillator
+set_io i_clk 60
+
+#
 # Led, buttons and CS
 set_io io_btn[0] 49 # B81/GBin5 L0 Blue led / S2 button
 set_io io_btn[1] 52 # B82/GBin4 L1 Green led / S1 button
 set_io o_led[0] 55 # B91 L3 Yellow led
 set_io o_led[1] 56 # B94 cs Red led
 
+#
+# STM <-> UART
+## set_io o_uart_tx 61
+## set_io i_uart_rx 62
+#
+# UART via PMod
+set_io o_uart_tx 37
+set_io i_uart_rx 32
+
+#
 # Dual SPI interface, for interacting with the A/D on the STM
-# set_io dsck 76
+#
+# set_io o_dsck		76
+# set_io io_dspi[0]	73
+# set_io io_dspi[1]	74
+# set_io o_dcsn		75
 
 # Bare SPI (only) flash
 set_io o_spi_cs_n  71
@@ -23,16 +41,53 @@ set_io o_spi_wp    64
 # set_io io_qspi_dat[2]	63
 # set_io io_qspi_dat[3]	64
 
-# STM <-> UART
-## set_io o_uart_tx 61
-## set_io i_uart_rx 62
 #
-# UART via PMod
-set_io o_uart_tx 37
-set_io i_uart_rx 32
+# SDRAM
+#
+# The Bank Select (BS) pins don't appear to be mapped
+## ?? output	wire	[1:0]	o_ram_bs;
+#
+set_io o_ram_clk	129
+set_io o_ram_cke	128
+set_io o_ram_cs_n	113
+set_io o_ram_ras_n	112
+set_io o_ram_cas_n	110
+set_io o_ram_we_n	107
+set_io o_ram_udqm	94
+set_io o_ram_ldqm	93
+#
+set_io o_ram_addr[0] 117
+set_io o_ram_addr[1] 119
+set_io o_ram_addr[2] 121
+set_io o_ram_addr[3] 124
+set_io o_ram_addr[4] 130
+set_io o_ram_addr[5] 125
+set_io o_ram_addr[6] 122
+set_io o_ram_addr[7] 120
+set_io o_ram_addr[8] 118
+set_io o_ram_addr[9] 116
+set_io o_ram_addr[10] 115
+set_io o_ram_addr[11] 114
+#
+set_io io_ram_data[0] 78
+set_io io_ram_data[1] 79
+set_io io_ram_data[2] 80
+set_io io_ram_data[3] 81
+set_io io_ram_data[4] 82
+set_io io_ram_data[5] 83
+set_io io_ram_data[6] 84
+set_io io_ram_data[7] 85
+set_io io_ram_data[8] 87
+set_io io_ram_data[9] 88
+set_io io_ram_data[10] 90
+set_io io_ram_data[11] 91
+set_io io_ram_data[12] 95
+set_io io_ram_data[13] 96
+set_io io_ram_data[14] 97
+set_io io_ram_data[15] 98
 
-# Onboard 25Mhz oscillator
-set_io i_clk 60
+
+
 
 ## Adding in any PCF_INSERT tags
 

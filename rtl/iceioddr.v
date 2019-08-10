@@ -38,11 +38,13 @@
 `default_nettype	none
 //
 module	iceioddr(i_clk, i_oe, i_data, o_data, io_pin);
+	parameter	WIDTH = 1;
 	input	wire			i_clk, i_oe;
 	input	wire [2*WIDTH-1:0]	i_data;
 	output	wire [2*WIDTH-1:0]	o_data;
-	output	wire [WIDTH-1:0]	io_pin;
+	inout	wire [WIDTH-1:0]	io_pin;
 
+	genvar	k;
 	generate for(k=0; k<WIDTH; k=k+1)
 	begin
 
@@ -52,10 +54,10 @@ module	iceioddr(i_clk, i_oe, i_data, o_data, io_pin);
 			.INPUT_CLK(i_clk),
 			.CLOCK_ENABLE(1'b1),
 			.OUTPUT_ENABLE(i_oe),
-			.D_OUT_0(i_ddr[WIDTH+k]),
-			.D_OUT_1(i_ddr[k]),
-			.D_IN_0(o_ddr[WIDTH+k]),
-			.D_IN_1(o_ddr[k]),
+			.D_OUT_0(i_data[WIDTH+k]),	// First data out
+			.D_OUT_1(i_data[k]),
+			.D_IN_0(o_data[WIDTH+k]),
+			.D_IN_1(o_data[k]),
 			.PACKAGE_PIN(io_pin[k]));
 	end endgenerate
 

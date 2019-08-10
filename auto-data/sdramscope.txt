@@ -1,20 +1,17 @@
 ################################################################################
 ##
-## Filename: 	mem_sdram_bkram.txt
+## Filename: 	flashscope.txt
 ##
-## Project:	ZipSTORM-MX, an iCE40 ZipCPU demonstration project
+## Project:	VideoZip, a ZipCPU SoC supporting video functionality
 ##
-## Purpose:	Describes a memory model containing nothing more than SDRAM
-##		and block RAM.  This will be used to create a linker script
-##	that can be used to link ZipCPU programs.
-##
+## Purpose:	Describes the flash in our new data format.
 ##
 ## Creator:	Dan Gisselquist, Ph.D.
 ##		Gisselquist Technology, LLC
 ##
 ################################################################################
 ##
-## Copyright (C) 2019, Gisselquist Technology, LLC
+## Copyright (C) 2017-2019, Gisselquist Technology, LLC
 ##
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of  the GNU General Public License as published
@@ -38,43 +35,14 @@
 ################################################################################
 ##
 ##
-##
-@PREFIX=mem_sdram_bkram
-@MASTER.TYPE=CPU
-@MASTER.BUS=zip
-@LD.FILE=sdram.ld
-@LD.DEFNS=
-/* LD.DEFNS from zipmaster.txt */
-_kram  = ORIGIN(bkram); /* No high-speed kernel RAM */
-_ram   = ORIGIN(sdram);
-_rom   = 0;
-_top_of_stack = ORIGIN(bkram) + LENGTH(bkram);
-
-@LD.SCRIPT=
-/* LD.SCRIPT from zipmaster.txt (SDRAM focused) */
-SECTIONS
-{
-	.rocode ORIGIN(bkram): ALIGN(4) {
-		_boot_address = .;
-		*(.start) *(.boot)
-	} > bkram
-	_kram_start = . ;
-	.kernel : ALIGN_WITH_INPUT {
-		*(.kernel)
-		_kram_end = . ;
-		}> bkram
-	_ram_image_start = . ;
-	.ramcod : ALIGN_WITH_INPUT {
-		*(.text.startup)
-		*(.text*)
-		*(.rodata*) *(.strings)
-		*(.data) *(COMMON)
-		_ram_image_end = . ;
-		}> sdram
-	.bss : ALIGN_WITH_INPUT {
-		*(.bss)
-		_bss_image_end = . ;
-		} > sdram
-	_top_of_heap = .;
-}
-#
+@PREFIX=sdramdbg
+@NADDR=2
+@DEVID=SDRAMSCOPE
+@DEPENDS=SDRAM_ACCESS
+@TARGET=sdram
+@TRIGGER=sdram_debug[31]
+@MAIN.DEFNS=
+@LOG_CAPTURE_SIZE=8
+@INT.FLASHDBG.WIRE=@$(PREFIX)_int
+@INT.FLASHDBG.PIC=buspic
+@INCLUDEFILE=wbscope.txt

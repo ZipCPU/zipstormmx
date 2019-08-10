@@ -38,7 +38,6 @@
 @PREFIX=sdram
 @DEVID=SDRAM
 @ACCESS=@$(DEVID)_ACCESS
-@DEPENDS=ALLCLOCKS_ACCESS
 # The RAM has 1MB
 @$LGRAMSZ=21
 @$NADDR=(1<<(@$LGRAMSZ-2))
@@ -46,10 +45,11 @@
 @NBYTES.FORMAT=0x%08x
 @SLAVE.TYPE=MEMORY
 @SLAVE.BUS=wb
+@CLOCK.NAME=clk
 @TOP.PORTLIST=
 		// Top level SDRAM I/O ports
 		o_ram_clk, o_ram_cke, o_ram_cs_n, o_ram_ras_n, o_ram_cas_n,
-		o_ram_we_n, o_ram_bs, o_ram_addr, o_ram_udqm, o_ram_ldqm,
+		o_ram_we_n, o_ram_addr, o_ram_udqm, o_ram_ldqm,
 		io_ram_data
 @TOP.IODECL=
 	// SDRAM
@@ -60,35 +60,48 @@
 	inout	wire	[15:0]	io_ram_data;
 @TOP.DEFNS=
 	// SDRAM data wires
-	wire	[15:0]	w_ram_data;
-	wire		w_ram_drive_data;
-	reg	[15:0]	r_ram_data;
+	wire	[15:0]	w_ram_data, w_ram_data_pedge, w_ram_data_nedge,
+			i_ram_data;
+	wire		w_ram_drive_data,
+			w_ram_cs_n, w_ram_ras_n, w_ram_cas_n, w_ram_we_n;
+	wire	[11:0]	w_ram_addr;
+	wire	[1:0]	w_ram_dqm;
+	wire	[1:0]	w_ramclk_in_ignored;
+	wire	[35:0]	w_ramctrl_in_ignored;
 @TOP.MAIN=
 			// SDRAM interface
 			// o_ram_clk,	// SDRAM clock
 			o_ram_cke,	// Clock enable
-			o_ram_cs_n,	// Chip select
-			o_ram_ras_n,	// Row address strobe
-			o_ram_cas_n,	// Column address strobe
-			o_ram_we_n,	// Write enable
-			o_ram_addr,	// Address lines
+			w_ram_cs_n,	// Chip select
+			w_ram_ras_n,	// Row address strobe
+			w_ram_cas_n,	// Column address strobe
+			w_ram_we_n,	// Write enable
+			w_ram_addr,	// Address lines
 			w_ram_drive_data,
-			r_ram_data,	// Data lines (input)
+			i_ram_data,	// Data lines (input)
 			w_ram_data,	// Data lines (output)
-			{ o_ram_udqm, o_ram_ldqm }
+			w_ram_dqm
 @TOP.INSERT=
 	//
 	// Tri-sate logic for the SDRAM
 	//
-	assign io_ram_data = (w_ram_drive_data) ? w_ram_data
-				: 16'bzzzz_zzzz_zzzz_zzzz;
+	iceioddr
+	ramck(i_clk, 1'b1, 2'b01, w_ramclk_in_ignored, o_ram_clk);
 
-	reg	[15:0]	r_ram_data_ext_clk;
-	// always @(posedge intermediate_clk_n)
-	always @(posedge s_clk)
-		{ r_ram_data, r_ram_data_ext_clk }
-				<= { r_ram_data_ext_clk, io_ram_data };
-	assign	o_ram_clk = mem_clk;
+	iceioddr #(.WIDTH(4+12+2))
+	ramctrl(i_clk, 1'b1,
+		{(2){ w_ram_cs_n, w_ram_ras_n, w_ram_cas_n, w_ram_we_n,
+			w_ram_addr, w_ram_dqm }},
+			w_ramctrl_in_ignored,
+		{ o_ram_cs_n, o_ram_ras_n, o_ram_cas_n, o_ram_we_n,
+			o_ram_addr, o_ram_udqm, o_ram_ldqm });
+
+	iceioddr #(.WIDTH(16))
+	ramio(i_clk, w_ram_drive_data, { w_ram_data, w_ram_data },
+			{ w_ram_data_pedge, w_ram_data_nedge },
+			io_ram_data);
+
+	assign	i_ram_data = w_ram_data_nedge;
 @MAIN.PORTLIST=
 		// The SDRAM I/O ports
 		o_ram_cke,
@@ -102,7 +115,6 @@
 	output	wire		o_ram_cs_n, o_ram_cke;
 	output	wire		o_ram_ras_n, o_ram_cas_n, o_ram_we_n;
 	output	wire	[11:0]	o_ram_addr;
-	output	wire	[1:0]	o_ram_bs;
 	output	wire		o_ram_drive_data;
 	input	wire	[15:0]	i_ram_data;
 	output	wire	[15:0]	o_ram_data;
@@ -112,17 +124,20 @@
 	// SDRAM
 	//
 	wire	[31:0]	@$(PREFIX)_debug;
+	wire	[31:0]	@$(PREFIX)_refresh_counts;
 @MAIN.INSERT=
-	wbsdram	sdram(i_clk,
+	wbsdram #(.CLOCK_FREQUENCY_HZ(@$(CLOCK.FREQUENCY)))
+	sdram(i_clk,
 		wb_cyc, (wb_stb)&&(sdram_sel),
 			wb_we, wb_addr[@$(LGRAMSZ)-3:0], wb_data, wb_sel,
 			@$(PREFIX)_ack, @$(PREFIX)_stall, @$(PREFIX)_data,
 		o_ram_cs_n, o_ram_cke, o_ram_ras_n, o_ram_cas_n, o_ram_we_n,
-			o_ram_bs, o_ram_addr,
-			o_ram_drive_data, i_ram_data, o_ram_data, o_ram_dqm,
-		@$(PREFIX)_debug);
+			o_ram_addr, o_ram_drive_data,
+			i_ram_data, o_ram_data, o_ram_dqm,
+		@$(PREFIX)_debug,
+		@$(PREFIX)_refresh_counts);
 @MAIN.ALT=
-	assign	o_ram_cke   = 1'b1;
+	assign	o_ram_cke   = 1'b0;
 	assign	o_ram_cs_n  = 1'b1;
 	assign	o_ram_ras_n = 1'b1;
 	assign	o_ram_cas_n = 1'b1;
@@ -132,6 +147,7 @@
 
 	assign	sdram_debug = 32'h0000;
 @MEM.NAME= @$(PREFIX)
+@LD.PERM=wx
 @MEM.ACCESS = @$(LD.PERM)
 @REGS.N=1
 @REGS.0= 0 R_@$(DEVID) @$(DEVID)
@@ -160,10 +176,12 @@ _@$(PREFIX)=ORIGIN(@$(PREFIX));
 		m_core->i_ram_data = (*m_@$(MEM.NAME))(1,
 			m_core->o_ram_cke, m_core->o_ram_cs_n,
 				m_core->o_ram_ras_n, m_core->o_ram_cas_n,
-				m_core->o_ram_we_n, m_core->o_ram_bs,
+				m_core->o_ram_we_n,
 				m_core->o_ram_addr, m_core->o_ram_drive_data,
 				m_core->o_ram_data, m_core->o_ram_dqm);
 
 #endif
 @SIM.LOAD =
 			m_@$(MEM.NAME)->load(start, &buf[offset], wlen);
+@RTL.MAKE.GROUP=SDRAM
+@RTL.MAKE.FILES=wbsdram.v iceioddr.v genuctrl.v
