@@ -194,10 +194,10 @@ module	toplevel(i_clk,
 	// Tri-sate logic for the SDRAM
 	//
 	iceioddr
-	ramck(i_clk, 1'b1, 2'b01, w_ramclk_in_ignored, o_ram_clk);
+	ramck(s_clk, 1'b1, 2'b01, w_ramclk_in_ignored, o_ram_clk);
 
 	iceioddr #(.WIDTH(4+12+2))
-	ramctrl(i_clk, 1'b1,
+	ramctrl(s_clk, 1'b1,
 		{(2){ w_ram_cs_n, w_ram_ras_n, w_ram_cas_n, w_ram_we_n,
 			w_ram_addr, w_ram_dqm }},
 			w_ramctrl_in_ignored,
@@ -205,7 +205,7 @@ module	toplevel(i_clk,
 			o_ram_addr, o_ram_udqm, o_ram_ldqm });
 
 	iceioddr #(.WIDTH(16))
-	ramio(i_clk, w_ram_drive_data, { w_ram_data, w_ram_data },
+	ramio(s_clk, w_ram_drive_data, { w_ram_data, w_ram_data },
 			{ w_ram_data_pedge, w_ram_data_nedge },
 			io_ram_data);
 
@@ -227,7 +227,7 @@ module	toplevel(i_clk,
 	// assign	io_btn[0] = (o_led[0] ? 1'b0 : 1'bz);
 	// assign	io_btn[1] = (o_led[1] ? 1'b0 : 1'bz);
 	//
-	assign	o_led = ~w_led[3:2];
+	assign	o_led = ~w_led[3:2] & (pll_locked ? 2'b11 : 2'b00);
 
 	SB_IO #(.PULLUP(1'b1), .PIN_TYPE(6'b1010_01))
 	ledio0 (.PACKAGE_PIN(io_btn[0]),

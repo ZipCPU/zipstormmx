@@ -88,7 +88,7 @@ module wbscopc(i_data_clk, i_ce, i_trigger, i_data,
 	input	wire			i_wb_addr; // One address line only
 	input	wire	[(BUSW-1):0]	i_wb_data;
 	output	wire			o_wb_ack, o_wb_stall;
-	output	wire	[(BUSW-1):0]	o_wb_data;
+	output	reg	[(BUSW-1):0]	o_wb_data;
 	// And, finally, for a final flair --- offer to interrupt the CPU after
 	// our trigger has gone off.  This line is equivalent to the scope 
 	// being stopped.  It is not maskable here.

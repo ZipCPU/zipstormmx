@@ -57,7 +57,7 @@
 //
 // FLASH erase/program configuration registers
 #define	R_FLASHCFG      	0x00040000	// 00040000, wbregs names: FLASHCFG
-// sdramdbg scope
+// sdramdbg compressed scope
 #define	R_SDRAMSCOPE    	0x00080000	// 00080000, wbregs names: SDRAMSCOPE
 #define	R_SDRAMSCOPED   	0x00080004	// 00080000, wbregs names: SDRAMSCOPED
 // The bus timer

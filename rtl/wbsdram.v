@@ -78,8 +78,7 @@ module	wbsdram(i_clk,
 	output	reg		o_wb_stall;
 	output	reg [DW-1:0]	o_wb_data;
 	// SDRAM control
-	output	wire		o_ram_cke;
-	output	wire		o_ram_cs_n,
+	output	wire		o_ram_cs_n, o_ram_cke,
 				o_ram_ras_n, o_ram_cas_n, o_ram_we_n;
 	output	reg	[11:0]	o_ram_addr;
 	output	reg		o_ram_dmod;
@@ -131,8 +130,7 @@ module	wbsdram(i_clk,
 	//   Here we calculate it for 2048 refresh cycles every 32ms
 	//   This is consistent with speed grade A1, and should come
 	//   out to about 780 cycles between refreshes for a 50MHz clock
-	localparam	CK_REFRESH = ((CLOCK_FREQUENCY_HZ/1000) * 16
-					/ 2048);
+	localparam	CK_REFRESH = ((CLOCK_FREQUENCY_HZ/1000) * 16 / 2048)-1;
 	// CAS_LATENCY is the clocks between the (read) command and the read
 	// data.  There must be at least one idle cycle between write data
 	// and read data.
@@ -146,19 +144,15 @@ module	wbsdram(i_clk,
 	localparam	CK_RRD = 2; // Cmd period, ACT[0] to ACT[1]
 	// localparam	CK_CCD = 1; // Column cmd delay time
 	localparam	CK_DPL = 2; // Input data to precharge time
-	localparam	CK_DAL = 2; // Input data to active/refresh cmd dly time
-	// localparam	CK_RBD = 2;// Burst stop cmd to output high z
-	// localparam	CK_WBD = 2;// Burst stop cmd to input invalid dly tim
-	localparam	CK_RQL = 2; // Precharge cmd to out in High Z time
+	localparam	CK_DAL = 5; // Input data to active/refresh cmd dly time
+	// localparam	CK_RBD = 3;// Burst stop cmd to output high z
+	// localparam	CK_WBD = 0;// Burst stop cmd to input invalid dly tim
+	localparam	CK_RQL = 3; // Precharge cmd to out in High Z time
 	//localparam	CK_PQL =-2; // Last out to auto-precharge start time(rd)
 	localparam	CK_QMD = 2; // DQM to output delay time (read)
 	localparam	CK_MCD = 2; // Precharge cmd to out in High Z time
 	//
-`ifdef	FORMAL
-	parameter	RDLY = CAS_LATENCY + 2;
-`else
-	parameter	RDLY = CAS_LATENCY + 1;
-`endif
+	parameter	RDLY = CAS_LATENCY + 4;
 
 	//
 	// Register declarations
@@ -231,7 +225,7 @@ module	wbsdram(i_clk,
 	always @(*)
 	begin
 		issued = 0;
-		if (!maintenance_mode && !nxt_dmod && !refresh_stall
+		if (!nxt_dmod && !refresh_stall
 			&& r_bank_valid && &bank_active[r_bank][CK_RCD:1])
 		begin
 			if (r_we)
@@ -239,6 +233,8 @@ module	wbsdram(i_clk,
 			else
 				issued = (clocks_til_idle < 5);
 		end
+		if (maintenance_mode || !r_pending || !i_wb_cyc)
+			issued <= 1'b0;
 	end
 
 	// Pre-process pending operations
@@ -261,10 +257,19 @@ module	wbsdram(i_clk,
 		r_data    <= i_wb_data;
 		r_sel     <= i_wb_sel;
 		fwd_addr  <= i_wb_addr + { {(AW-4){1'b0}}, 2'b11, 2'b00 };
+`ifdef	BROKEN_CODE
+	end else begin
+		if (issued)
+			r_pending <= 1'b0;
+		if (!i_wb_cyc)
+			{ r_pending, r_addr, r_data } = 0;
+	end
+`else
 	end else if (issued)
 		r_pending <= 1'b0;
 	else if (!i_wb_cyc)
 		r_pending <= 1'b0;
+`endif
 
 	always @(*)
 	begin
@@ -336,8 +341,6 @@ module	wbsdram(i_clk,
 	initial r_barrell_ack = 0;
 	initial	clocks_til_idle = 3'h0;
 	initial o_wb_stall = 1'b1;
-	initial	o_ram_dmod = `DMOD_GETINPUT;
-	initial	nxt_dmod = `DMOD_GETINPUT;
 	initial	o_cmd = CMD_NOOP;
 	// initial o_ram_cs_n  = 1'b0;
 	// initial o_ram_ras_n = 1'b1;
@@ -363,17 +366,15 @@ module	wbsdram(i_clk,
 		// o_ram_ras_n <= m_ram_ras_n;
 		// o_ram_cas_n <= m_ram_cas_n;
 		// o_ram_we_n  <= m_ram_we_n;
-		o_ram_dmod  <= `DMOD_GETINPUT;
+		// o_ram_dmod  <= `DMOD_GETINPUT;
 		o_ram_addr  <= maintenance_addr;
-		nxt_dmod    <= `DMOD_GETINPUT;
 `ifdef	FORMAL
 		f_dbg_command = "MAINT";
 `endif
 	end else begin
+		o_ram_addr <= 0;
 		o_wb_stall <= (r_pending && (o_cmd != CMD_READ) &&(o_cmd != CMD_WRITE))||(bus_cyc);
 		r_barrell_ack <= r_barrell_ack >> 1;
-		nxt_dmod <= `DMOD_GETINPUT;
-		o_ram_dmod <= nxt_dmod;
 `ifdef	FORMAL
 		f_dbg_command = "NOOP";
 `endif
@@ -404,10 +405,27 @@ module	wbsdram(i_clk,
 
 		// o_ram_data <= r_data[15:0];
 
-		if (nxt_dmod || refresh_stall)
-			;
-		else if ((pending)&&(!r_bank_valid))
+		if (r_pending && !r_bank_valid)
 		begin
+			o_ram_addr  <= { r_bank, r_row };
+			if (!bank_active[r_bank] == 0)
+				o_ram_addr[10] <= 1'b0;
+		end else if (issued)
+		begin
+			o_ram_addr <= { r_bank, 3'b0, r_col };
+		end else if (OPT_FWD_ADDRESS && r_pending && !fwd_bank_valid)
+		begin
+			o_ram_addr  <= { fwd_bank, fwd_row };
+			if (!bank_active[fwd_bank] == 0)
+				o_ram_addr[10] <= 1'b0;
+		end
+
+
+		if (refresh_stall)
+			;
+		else if ((r_pending)&&(!r_bank_valid))
+		begin
+			// o_ram_addr  <= { r_bank, r_row };
 			if (bank_active[r_bank]==0)
 			begin // Need to activate the requested bank
 				o_cmd <= CMD_ACTIVATE;
@@ -415,7 +433,6 @@ module	wbsdram(i_clk,
 				// o_ram_ras_n <= 1'b0;
 				// o_ram_cas_n <= 1'b1;
 				// o_ram_we_n  <= 1'b1;
-				o_ram_addr  <= { r_bank, r_row };
 				// clocks_til_idle[2:0] <= 1;
 				bank_active[r_bank][CK_RCD] <= 1'b1;
 				bank_row[r_bank] <= r_row;
@@ -431,8 +448,8 @@ module	wbsdram(i_clk,
 				// o_ram_ras_n <= 1'b0;
 				// o_ram_cas_n <= 1'b1;
 				// o_ram_we_n  <= 1'b0;
-				o_ram_addr[11]<= r_bank;
-				o_ram_addr[10]<= 1'b0;
+				// o_ram_addr[11]<= r_bank;
+				// o_ram_addr[10]<= 1'b0;
 				// clocks_til_idle[2:0] <= 1;
 				bank_active[r_bank][CK_RCD:CK_RP-1] <= 0;
 `ifdef	FORMAL
@@ -449,8 +466,7 @@ module	wbsdram(i_clk,
 				o_cmd <= CMD_WRITE;
 				clocks_til_idle <= 2;
 				r_barrell_ack[1] <= 1'b1;
-				o_ram_dmod <= `DMOD_PUTOUTPUT;
-				nxt_dmod <= `DMOD_PUTOUTPUT;
+				// o_ram_dmod <= `DMOD_PUTOUTPUT;
 				// o_ram_data <= r_data[DW-1:16];
 				//
 `ifdef	FORMAL
@@ -466,10 +482,10 @@ module	wbsdram(i_clk,
 			end
 			o_wb_stall <= 1'b0;
 			o_cmd[3] <= !i_wb_cyc;
-			o_ram_addr  <= { r_bank, 3'h0, r_col };
+			// o_ram_addr  <= { r_bank, 3'h0, r_col };
 		end else if (OPT_FWD_ADDRESS && r_pending && !fwd_bank_valid)
 		begin
-			o_ram_addr  <= { fwd_bank, fwd_row };
+			// o_ram_addr  <= { fwd_bank, fwd_row };
 			bank_row[fwd_bank] <= fwd_row;
 
 			// Do I need to close the next bank I'll need?
@@ -482,7 +498,7 @@ module	wbsdram(i_clk,
 				// o_ram_cas_n <= 1'b1;
 				// o_ram_we_n  <= 1'b0;
 				// Close the bank
-				o_ram_addr[10] <= 1'b0;
+				// o_ram_addr[10] <= 1'b0;
 				bank_active[fwd_bank][CK_RCD:CK_RP-1] <= 0;
 `ifdef	FORMAL
 				f_dbg_command = "NXTPR";
@@ -658,13 +674,25 @@ module	wbsdram(i_clk,
 				: 1'b1;
 	end
 
-/*
-*/
+	initial	o_ram_dmod = `DMOD_GETINPUT;
+	initial	nxt_dmod = `DMOD_GETINPUT;
+	always @(posedge i_clk)
+	if (issued && r_we)
+	begin
+		o_ram_dmod <= `DMOD_PUTOUTPUT;
+		nxt_dmod <= `DMOD_PUTOUTPUT;
+	end else begin
+		nxt_dmod <= `DMOD_GETINPUT;
+		o_ram_dmod <= nxt_dmod;
+	end
+
 	always @(posedge i_clk)
 	if (nxt_dmod)
 		o_ram_data <= r_data[15:0];
-	else
+	else if (issued && r_we)
 		o_ram_data <= r_data[DW-1:16];
+	else
+		o_ram_data <= 0;
 
 	initial	nxt_sel = 2'b11;
 	always @(posedge i_clk)
@@ -704,15 +732,15 @@ module	wbsdram(i_clk,
 	always @(posedge i_clk)
 		// trigger <= ((o_wb_data[15:0]==o_wb_data[DW-1:16])
 		//	&&(o_wb_ack)&&(!i_wb_we));
-		trigger <= (i_wb_stb && !o_wb_stall);
+		trigger <= (i_wb_stb && !o_wb_stall && !i_wb_we);
 
 
 	assign	o_debug = { trigger, i_wb_cyc, i_wb_stb, i_wb_we,	// 4
 		o_wb_ack, o_wb_stall,					// 2
 		o_ram_cs_n, o_ram_ras_n, o_ram_cas_n, o_ram_we_n,	// 4
-			o_ram_dmod, r_pending, 				//  2
-			o_ram_addr[11:2],o_ram_dqm,			// 12 more
-			(r_we) ? { o_ram_data[7:0] }			//  8 values
+			o_ram_dmod, o_ram_addr[11:1],			// 12
+			o_ram_dqm,				// 2 more
+			(r_we||o_ram_dmod) ? { o_ram_data[7:0] } //  8 values
 				: o_wb_data[7:0]
 		//		: { o_wb_data[23:20], o_wb_data[3:0] }
 			// i_ram_data[7:0]
@@ -1019,9 +1047,6 @@ module	wbsdram(i_clk,
 	// Bus (ack) checks
 	//
 	////////////////////////////////////////////////////////////////////////
-	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(o_wb_ack)))
-		assert(!o_wb_ack);
 
 	reg	[3:0]	f_acks_pending;
 	always @(*)
@@ -1074,9 +1099,6 @@ module	wbsdram(i_clk,
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(o_wb_ack)))
-		assert(!o_wb_ack);
 
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -1142,6 +1164,35 @@ module	wbsdram(i_clk,
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
+
+	// Writes
+	assert property (@(posedge i_clk)
+		disable iff (!i_wb_cyc)
+		i_wb_stb && i_wb_we && !o_wb_stall
+		|=> r_pending && (r_addr == $past(i_wb_addr))
+		##1(r_pending && $stable(f_pending)&&r_we&&(o_cmd != CMD_WRITE))
+			[*0:35]
+		##1 (o_cmd == CMD_WRITE)
+			&&(o_ram_addr == $past({ r_bank, 3'b000, r_addr[6:0], 1'b0 }))
+			&&(o_ram_data == $past(r_data[31:16]))
+			&&(o_ram_dqm == ~$past(r_sel[3:2]))
+		##1 (o_cmd[3] || (o_cmd == CMD_NOOP)) && (o_wb_ack)
+			&&(o_ram_data == $past(r_data[15:0],2))
+			&&(o_ram_dqm == ~$past(r_sel[1:0],2))
+			);
+		
+	// Reads
+	assert property (@(posedge i_clk)
+		disable iff (!i_wb_cyc)
+		i_wb_stb && !i_wb_we && !o_wb_stall
+		|=> r_pending && (r_addr == $past(i_wb_addr))
+		##1(o_wb_stall && r_pending && $stable(f_pending)
+				&&!r_we&&(o_cmd != CMD_READ))
+			[*0:40]
+		##1 (o_cmd == CMD_READ)
+			&&(o_ram_addr == $past({r_bank, 3'b000, r_addr[6:0], 1'b0}))
+		##1 (o_ram_dqm == 2'b00));
+		
 	genvar	gbank;
 	generate for(gbank=0; gbank<2; gbank=gbank+1)
 	begin
@@ -1196,11 +1247,14 @@ module	wbsdram(i_clk,
 		//
 		// Read to precharge
 		// See page 33
+		if (CAS_LATENCY+1-CK_RQL-1 > 0)
+		begin
 		assert property (@(posedge i_clk)
 			(o_cmd == CMD_READ && o_ram_addr[11] == gbank)
 			|=> (o_cmd != CMD_PRECHARGE)
 				||(!o_ram_addr[10] && o_ram_addr[11] != gbank)
 				[*(CAS_LATENCY+1-CK_RQL-1)]);
+		end
 	end endgenerate
 
 	assert property (@(posedge i_clk)
@@ -1213,11 +1267,15 @@ module	wbsdram(i_clk,
 		disable iff (!i_wb_cyc)
 		(o_cmd == CMD_READ)
 		|=> (o_cmd != CMD_READ) [*CAS_LATENCY-3]
-		##1 (o_ram_dmod == `DMOD_GETINPUT)&&($past(o_ram_dqm,CK_QMD)==0)
-		##1 (o_ram_dmod == `DMOD_GETINPUT)&&($past(o_ram_dqm,CK_QMD)==0)
-		##1 (o_wb_ack)
-			&&(o_wb_data[15:0] == $past(i_ram_data,1))
-			&&(o_wb_data[31:16] == $past(i_ram_data,2)));
+		##1(o_ram_dmod == `DMOD_GETINPUT)&&($past(o_ram_dqm,CK_QMD)==0)
+		##1(o_ram_dmod == `DMOD_GETINPUT)&&($past(o_ram_dqm,CK_QMD)==0));
+
+	assert property (@(posedge i_clk)
+		disable iff (!i_wb_cyc)
+		(o_cmd == CMD_READ)
+		|=> 1'b1 [*RDLY-2]
+		##1 (o_wb_ack)	&&(o_wb_data[15: 0] == $past(i_ram_data,1))
+				&&(o_wb_data[31:16] == $past(i_ram_data,2)));
 
 	assert property (@(posedge i_clk)
 		(o_cmd == CMD_READ)

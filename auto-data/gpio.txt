@@ -41,7 +41,7 @@
 @ACCESS=GPIO_ACCESS
 @SLAVE.TYPE=SINGLE
 @SLAVE.BUS=wb
-@$NUMINPUT= 2
+@$NUMINPUT= 3
 @$NUMOUTPUT= 3+8
 # @SINGLE.OUTPUTS= o_gpio
 # @SINGLE.INPUTS=  i_gpio
@@ -58,11 +58,11 @@
 @TOP.DEFNS=
 	// GPIO declarations.  The two wire busses are just virtual lists of
 	// input (or output) ports.
-	wire	[@$(NUMINPUT) -1:0]	i_@$(PREFIX);
+	wire	[@$(NUMINPUT) -2:0]	i_@$(PREFIX);
 	wire	[@$(NUMOUTPUT)-1:0]	o_@$(PREFIX);
 @TOP.MAIN=
 		// GPIO wires
-		i_gpio, o_gpio
+		{ pll_locked, i_gpio }, o_gpio
 @TOP.INSERT=
 	assign	i_gpio = { i_btn };
 	assign	o_ledr = o_@$(PREFIX)[0];

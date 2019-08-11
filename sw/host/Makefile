@@ -64,7 +64,7 @@ $(OBJDIR)/%.o: %.c
 
 .PHONY: clean
 clean:
-	rm -rf $(OBJDIR)/ $(PROGRAMS) a.out
+	rm -rf $(OBJDIR)/ $(PROGRAMS) $(SCOPES) a.out
 
 $(OBJDIR)/scopecls.o: scopecls.cpp scopecls.h
 

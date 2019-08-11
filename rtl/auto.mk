@@ -39,7 +39,7 @@
 ################################################################################
 ##
 ##
-SCOPE := wbscope.v
+SCOPC := wbscopc.v
 
 BKRAM := memdev.v
 
@@ -59,5 +59,5 @@ FLASH := spixpress.v oclkddr.v
 
 SPIOD := .
 SPIO  := $(addprefix $(SPIOD)/,spio.v debouncer.v)
-VFLIST := main.v  $(SCOPE) $(BKRAM) $(HBBUS) $(BUSPIC) $(BUSDLY) $(ZIPCPU) $(SDRAM) $(HBUART) $(FLASH) $(SPIO)
+VFLIST := main.v  $(SCOPC) $(BKRAM) $(HBBUS) $(BUSPIC) $(BUSDLY) $(ZIPCPU) $(SDRAM) $(HBUART) $(FLASH) $(SPIO)
 AUTOVDIRS :=  -y hexbus -y cpu -y .

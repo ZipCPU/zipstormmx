@@ -63,6 +63,7 @@ void	closeup(int v) {
 	exit(0);
 }
 
+const bool COMPRESSED = true;
 class	SDRAMSCOPE : public SCOPE {
 	// While I put these in at one time, they really mess up other scopes,
 	// since setting parameters based upon the debug word forces the decoder
@@ -71,7 +72,7 @@ class	SDRAMSCOPE : public SCOPE {
 	// int	m_oword[2], m_iword[2], m_p;
 public:
 	SDRAMSCOPE(FPGA *fpga, unsigned addr, bool vecread)
-		: SCOPE(fpga, addr, false, vecread) {};
+		: SCOPE(fpga, addr, COMPRESSED, vecread) {};
 	~SDRAMSCOPE(void) {}
 	virtual	void	decode(DEVBUS::BUSW val) const {
 		int	cmd;
@@ -133,7 +134,8 @@ public:
 
 	virtual	void define_traces(void) {
 		// register_trace(name, nbits, offset);
-		register_trace("trigger",     1, 31);
+		if (!COMPRESSED)
+			register_trace("trigger",     1, 31);
 		register_trace("i_wb_cyc",    1, 30);
 		register_trace("i_wb_stb",    1, 29);
 		register_trace("i_wb_we",     1, 28);
@@ -144,8 +146,7 @@ public:
 		register_trace("o_ram_cas_n", 1, 23);
 		register_trace("o_ram_we_n",  1, 22);
 		register_trace("o_ram_dmod",  1, 21);
-		register_trace("r_pending",   1, 20);
-		register_trace("addr",       10, 10);
+		register_trace("addr",       10, 11);
 		register_trace("dqm",         2,  8);
 		register_trace("data",        8,  0);
 	}

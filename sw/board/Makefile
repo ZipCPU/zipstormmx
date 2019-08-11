@@ -77,6 +77,7 @@ $(OBJDIR)/%.txt: $(OBJDIR)/%.o
 %.txt: %
 	$(OBJDUMP) -S -D $^ > $@
 
+MAP=-Wl,-Map=$(OBJDIR)/$@.map
 
 #
 # The CPUTest program here is special--it doesn't use the C library.  Hence,
@@ -105,7 +106,7 @@ hello: $(OBJDIR)/hello.o $(LSCRIPTS)
 	$(CC) $(CFLAGS) $(LFLAGS) $< $(LIBS) -o $@
 
 memtest: $(OBJDIR)/memtest.o bkram.ld
-	$(CC) -ffreestanding -Tbkram.ld $(CFLAGS) $< -o $@
+	$(CC) -ffreestanding -Tbkram.ld $(CFLAGS) $(MAP) $< -o $@
 
 define	mk-objdir
 	@bash -c "if [ ! -e $(OBJDIR) ]; then mkdir -p $(OBJDIR); fi"

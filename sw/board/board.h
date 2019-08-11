@@ -86,10 +86,10 @@ typedef struct  CONSOLE_S {
 
 
 
-#ifdef	SDRAMSCOPE_SCOPE
+#ifdef	SDRAMSCOPE_SCOPC
 #define	_BOARD_HAS_SDRAMSCOPE
 static volatile SCOPE *const _sdramdbg = ((SCOPE *)0x00080000);
-#endif	// SDRAMSCOPE_SCOPE
+#endif	// SDRAMSCOPE_SCOPC
 #ifdef	BKRAM_ACCESS
 #define	_BOARD_HAS_BKRAM
 extern char	_bkram[0x00002000];

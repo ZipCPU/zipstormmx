@@ -78,7 +78,7 @@
 `define	FLASHCFG_ACCESS
 `endif	// FLASH_ACCESS
 `ifdef	SDRAM_ACCESS
-`define	SDRAMSCOPE_SCOPE
+`define	SDRAMSCOPE_SCOPC
 `endif	// SDRAM_ACCESS
 //
 // End of dependency list
@@ -771,14 +771,14 @@ module	main(i_clk, i_reset,
 	// or making sure all of the various interrupt wires are set to
 	// zero if the component is not included.
 	//
-`ifdef	SDRAMSCOPE_SCOPE
-	wbscope #(.LGMEM(8),
+`ifdef	SDRAMSCOPE_SCOPC
+	wbscopc #(.LGMEM(10),
 		.SYNCHRONOUS(1))
-	sdramdbgi(i_clk, 1'b1, sdram_debug[31], sdram_debug,
+	sdramdbgi(i_clk, 1'b1, sdram_debug[31], sdram_debug[30:0],
 		i_clk, wb_cyc, (wb_stb)&&(sdramdbg_sel), wb_we,
 		wb_addr[0], wb_data, sdramdbg_ack, sdramdbg_stall,
 		sdramdbg_data, sdramdbg_int);
-`else	// SDRAMSCOPE_SCOPE
+`else	// SDRAMSCOPE_SCOPC
 	assign	sdramdbg_int = 0;
 
 	// In the case that there is no sdramdbg peripheral responding on the wb bus
@@ -787,7 +787,7 @@ module	main(i_clk, i_reset,
 	assign	sdramdbg_ack   = (wb_stb) && (sdramdbg_sel);
 
 	assign	sdramdbg_int = 1'b0;	// sdramdbg.INT.FLASHDBG.WIRE
-`endif	// SDRAMSCOPE_SCOPE
+`endif	// SDRAMSCOPE_SCOPC
 
 `ifdef	WATCHDOG_ACCESS
 	assign	wd_ireset = i_reset;

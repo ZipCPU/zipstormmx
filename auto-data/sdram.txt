@@ -86,10 +86,10 @@
 	// Tri-sate logic for the SDRAM
 	//
 	iceioddr
-	ramck(i_clk, 1'b1, 2'b01, w_ramclk_in_ignored, o_ram_clk);
+	ramck(s_clk, 1'b1, 2'b01, w_ramclk_in_ignored, o_ram_clk);
 
 	iceioddr #(.WIDTH(4+12+2))
-	ramctrl(i_clk, 1'b1,
+	ramctrl(s_clk, 1'b1,
 		{(2){ w_ram_cs_n, w_ram_ras_n, w_ram_cas_n, w_ram_we_n,
 			w_ram_addr, w_ram_dqm }},
 			w_ramctrl_in_ignored,
@@ -97,7 +97,7 @@
 			o_ram_addr, o_ram_udqm, o_ram_ldqm });
 
 	iceioddr #(.WIDTH(16))
-	ramio(i_clk, w_ram_drive_data, { w_ram_data, w_ram_data },
+	ramio(s_clk, w_ram_drive_data, { w_ram_data, w_ram_data },
 			{ w_ram_data_pedge, w_ram_data_nedge },
 			io_ram_data);
 

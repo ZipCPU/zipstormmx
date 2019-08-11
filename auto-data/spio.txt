@@ -62,7 +62,7 @@
 	// assign	io_btn[0] = (o_led[0] ? 1'b0 : 1'bz);
 	// assign	io_btn[1] = (o_led[1] ? 1'b0 : 1'bz);
 	//
-	assign	o_led = ~w_led[3:2];
+	assign	o_led = ~w_led[3:2] & (pll_locked ? 2'b11 : 2'b00);
 
 	SB_IO #(.PULLUP(1'b1), .PIN_TYPE(6'b1010_01))
 	ledio0 (.PACKAGE_PIN(io_btn[0]),

@@ -121,6 +121,8 @@ $(VDIRFB)/V%__ALL.a: $(VDIRFB)/V%.mk
 #
 $(JSON): toplevel.v $(VFLIST)
 	@echo "Running Yosys"
+	@echo $^ > mkgen.ys
+	@echo "synth_ice40 -json $(JSON) -top toplevel" >> mkgen.ys
 	@$(YOSYS) -ql yosys.log -p 'synth_ice40 -json $(JSON) -top toplevel' $^
 
 # @echo $(YOSYS) -ql yosys.log -p 'synth_ice40 -json $(JSON) -top toplevel' ...
