@@ -131,20 +131,33 @@ module	wbsdram(i_clk,
 	//   This is consistent with speed grade A1, and should come
 	//   out to about 780 cycles between refreshes for a 50MHz clock
 	localparam	CK_REFRESH = ((CLOCK_FREQUENCY_HZ/1000) * 16 / 2048)-1;
+`ifdef	CONSERVATIVE_TIMING
 	// CAS_LATENCY is the clocks between the (read) command and the read
 	// data.  There must be at least one idle cycle between write data
 	// and read data.
 	localparam	CAS_LATENCY = 3;	// tCAC
 	localparam	ACTIVE_TO_RW = 3,	// tRCD
 				CK_RCD = ACTIVE_TO_RW;
-	localparam	RAS_LATENCY = 6;
 	localparam	CK_RC  = 9;	// Command period, REF to REF/ACT to ACT
 	localparam	CK_RAS = 6; // Cmd period, ACT to PRE
+	localparam	RAS_LATENCY = CK_RAS;
 	localparam	CK_RP  = 3; // Cmd period, PRE to ACT
+`else
+	// CAS_LATENCY is the clocks between the (read) command and the read
+	// data.  There must be at least one idle cycle between write data
+	// and read data.
+	localparam	CAS_LATENCY = 2;	// tCAC
+	localparam	ACTIVE_TO_RW = 4,	// tRCD
+				CK_RCD = ACTIVE_TO_RW;
+	localparam	RAS_LATENCY = 4;
+	localparam	CK_RC  = 6;	// Command period, REF to REF/ACT to ACT
+	localparam	CK_RAS = 4; // Cmd period, ACT to PRE
+	localparam	CK_RP  = 2; // Cmd period, PRE to ACT
+`endif
 	localparam	CK_RRD = 2; // Cmd period, ACT[0] to ACT[1]
 	// localparam	CK_CCD = 1; // Column cmd delay time
 	localparam	CK_DPL = 2; // Input data to precharge time
-	localparam	CK_DAL = 5; // Input data to active/refresh cmd dly time
+	localparam	CK_DAL = 2+CK_RP; // Input data to active/refresh cmd dly time
 	// localparam	CK_RBD = 3;// Burst stop cmd to output high z
 	// localparam	CK_WBD = 0;// Burst stop cmd to input invalid dly tim
 	localparam	CK_RQL = 3; // Precharge cmd to out in High Z time
@@ -234,7 +247,7 @@ module	wbsdram(i_clk,
 				issued = (clocks_til_idle < 5);
 		end
 		if (maintenance_mode || !r_pending || !i_wb_cyc)
-			issued <= 1'b0;
+			issued = 1'b0;
 	end
 
 	// Pre-process pending operations
@@ -408,7 +421,8 @@ module	wbsdram(i_clk,
 		if (r_pending && !r_bank_valid)
 		begin
 			o_ram_addr  <= { r_bank, r_row };
-			if (!bank_active[r_bank] == 0)
+			if (bank_active[r_bank][0])
+				// Precharge the selected bank
 				o_ram_addr[10] <= 1'b0;
 		end else if (issued)
 		begin
@@ -416,7 +430,7 @@ module	wbsdram(i_clk,
 		end else if (OPT_FWD_ADDRESS && r_pending && !fwd_bank_valid)
 		begin
 			o_ram_addr  <= { fwd_bank, fwd_row };
-			if (!bank_active[fwd_bank] == 0)
+			if (!bank_active[fwd_bank][0] == 0)
 				o_ram_addr[10] <= 1'b0;
 		end
 
@@ -1263,12 +1277,21 @@ module	wbsdram(i_clk,
 		##1 (o_ram_dmod == `DMOD_PUTOUTPUT)&&(o_ram_data == $past(r_data[15:0],2))
 				&& (o_cmd != CMD_WRITE));
 
-	assert property (@(posedge i_clk)
+	generate if (CAS_LATENCY >= 3)
+	begin
+		assert property (@(posedge i_clk)
 		disable iff (!i_wb_cyc)
 		(o_cmd == CMD_READ)
 		|=> (o_cmd != CMD_READ) [*CAS_LATENCY-3]
-		##1(o_ram_dmod == `DMOD_GETINPUT)&&($past(o_ram_dqm,CK_QMD)==0)
-		##1(o_ram_dmod == `DMOD_GETINPUT)&&($past(o_ram_dqm,CK_QMD)==0));
+		##1(o_ram_dmod == `DMOD_GETINPUT)&&($past(o_ram_dqm,CK_QMD)==0) [*2]);
+	end else begin // if (CAS_LATENCY < 3)
+
+		assert property (@(posedge i_clk)
+		disable iff (!i_wb_cyc)
+			(o_cmd == CMD_READ)
+			|=> 1[*CAS_LATENCY-1]
+			##1 (o_ram_dmod == `DMOD_GETINPUT)&&($past(o_ram_dqm,CK_QMD)==0) [*2]);
+	end endgenerate
 
 	assert property (@(posedge i_clk)
 		disable iff (!i_wb_cyc)
@@ -1290,12 +1313,14 @@ module	wbsdram(i_clk,
 		|=> (o_ram_cs_n || (o_cmd == CMD_NOOP)) [*(CK_MCD-1)]);
 
 	cover property (@(posedge i_clk)
+		disable if (f_nacks != f_nreqs && !i_wb_cyc)
 		((i_wb_cyc && !i_wb_we && i_wb_stb) throughout
 			(!o_wb_stall ##1 o_wb_stall [*0:3]) [*3])
 		##1 (i_wb_cyc && r_barrell_ack != 0)[*0:8]
 		##1 (r_barrell_ack == 0)&& (r_pending == 0) && (!i_wb_stb));
 
 	cover property (@(posedge i_clk)
+		disable if (f_nacks != f_nreqs && !i_wb_cyc)
 		((i_wb_cyc && i_wb_we && i_wb_stb) throughout
 			(!o_wb_stall ##1 o_wb_stall [*0:3]) [*3])
 		##1 (i_wb_cyc && r_barrell_ack != 0)[*0:8]
