@@ -1,17 +1,20 @@
 [*]
 [*] GTKWave Analyzer v3.3.66 (w)1999-2015 BSI
-[*] Sun Jul 21 00:13:17 2019
+[*] Sat Aug 10 15:30:25 2019
 [*]
-[dumpfile] "/home/dan/work/rnd/opencores/zipstorm/trunk-mx/bench/formal/wbsdram_prf/engine_0/trace_induct.vcd"
-[dumpfile_mtime] "Sun Jul 21 00:09:37 2019"
-[dumpfile_size] 66173
-[savefile] "/home/dan/work/rnd/opencores/zipstorm/trunk-mx/bench/formal/wbsdram.gtkw"
+[dumpfile] "/home/dan/work/rnd/opencores/zipstorm/new-sdram/wbsdram_cvr/engine_0/trace0.vcd"
+[dumpfile_mtime] "Sat Aug 10 15:27:42 2019"
+[dumpfile_size] 109556
+[savefile] "/home/dan/work/rnd/opencores/zipstorm/new-sdram/wbsdram.gtkw"
 [timestart] 0
 [size] 1920 1029
-[pos] -1 -1
-*-6.000000 411 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] 1917 -1
+*-7.000000 320 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] wbsdram.
+[treeopen] wbsdram.refresh_controller.
+[treeopen] wbsdram.reset_controller.
 [sst_width] 196
-[signals_width] 182
+[signals_width] 190
 [sst_expanded] 1
 [sst_vpaned_height] 306
 @28
@@ -32,12 +35,12 @@ wbsdram.i_wb_addr[18:0]
 wbsdram.i_wb_data[31:0]
 [color] 3
 wbsdram.i_wb_sel[3:0]
-@29
+@28
 [color] 2
 wbsdram.o_wb_stall
 [color] 2
 wbsdram.o_wb_ack
-@23
+@22
 [color] 2
 wbsdram.o_wb_data[31:0]
 @200
@@ -70,16 +73,74 @@ wbsdram.r_bank
 wbsdram.r_col[7:0]
 @200
 -
-@28
-wbsdram.need_refresh
-wbsdram.in_refresh
-wbsdram.in_refresh_clk[2:0]
 @22
-wbsdram.refresh_clk[9:0]
-@28
-wbsdram.refresh_cmd
+wbsdram.maintenance_cmd[3:0]
+wbsdram.refresh_cmd[3:0]
+wbsdram.refresh_controller.o_cmd[5:0]
+wbsdram.fwb.f_outstanding[4:0]
+wbsdram.r_barrell_ack[4:0]
 @200
 -
+@28
+wbsdram.startup_hold
+@c00200
+-RESET
+@28
+wbsdram.reset_controller.i_clk
+wbsdram.reset_controller.i_reset
+@22
+wbsdram.reset_controller.f_addr[3:0]
+wbsdram.reset_controller.f_cmd[3:0]
+wbsdram.reset_controller.f_active[3:0]
+wbsdram.reset_controller.f_active_cmd[6:0]
+@28
+wbsdram.reset_controller.r_step
+@22
+wbsdram.reset_controller.DELAY_COUNTER.r_count[3:0]
+@200
+-
+@22
+wbsdram.reset_controller.o_cmd[5:0]
+@200
+-
+@22
+wbsdram.reset_controller.f_cmd_cmd[6:0]
+wbsdram.reset_controller.f_prior_cmd[6:0]
+wbsdram.reset_controller.fn_active[3:0]
+wbsdram.reset_controller.fn_cmd[3:0]
+wbsdram.reset_controller.r_addr[3:0]
+wbsdram.reset_controller.r_cmd[6:0]
+@1401200
+-RESET
+@28
+wbsdram.refresh_active
+wbsdram.reset_active
+@c00200
+-REFRESH
+@28
+wbsdram.refresh_controller.i_clk
+wbsdram.refresh_controller.i_reset
+@22
+wbsdram.refresh_controller.f_active[3:0]
+wbsdram.refresh_controller.f_active_cmd[24:0]
+wbsdram.refresh_controller.f_addr[3:0]
+wbsdram.refresh_controller.f_cmd[3:0]
+wbsdram.refresh_controller.f_cmd_cmd[24:0]
+@28
+wbsdram.refresh_controller.f_past_valid
+@22
+wbsdram.refresh_controller.f_prior_cmd[24:0]
+wbsdram.refresh_controller.fn_active[3:0]
+wbsdram.refresh_controller.fn_cmd[3:0]
+wbsdram.refresh_controller.o_cmd[5:0]
+wbsdram.refresh_controller.r_addr[3:0]
+wbsdram.refresh_controller.r_cmd[24:0]
+@28
+wbsdram.refresh_controller.r_step
+@1401200
+-REFRESH
+@28
+wbsdram.maintenance_mode
 @22
 [color] 2
 wbsdram.o_cmd[3:0]
@@ -92,6 +153,10 @@ wbsdram.o_ram_ras_n
 wbsdram.o_ram_cas_n
 [color] 2
 wbsdram.o_ram_we_n
+@22
+wbsdram.f_cmd[4:0]
+@821
+wbsdram.f_dbg_command[39:0]
 @200
 -
 @28
@@ -112,13 +177,9 @@ wbsdram.o_ram_addr[11:0]
 wbsdram.i_ram_data[15:0]
 @200
 -
-@28
-wbsdram.bank_active<0>[2:0]
-wbsdram.bank_active<1>[2:0]
 @22
 wbsdram.bank_row<0>[10:0]
 wbsdram.bank_row<1>[10:0]
-wbsdram.r_barrell_ack[5:0]
 @28
 wbsdram.r_bank_valid
 [pattern_trace] 1
