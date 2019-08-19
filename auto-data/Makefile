@@ -52,9 +52,9 @@ IO      := spio.txt # gpio.txt
 RTC     := # rtclight.txt # rtcdate.txt
 DBGBUS  := hbconsole.txt
 # MEMORY  := bkram.txt qspiflash.txt # spixpress.txt # sdram.txt
-MEMORY  := bkram.txt spixpress.txt sdram.txt
+MEMORY  := bkram.txt spixpress.txt sdram.txt sdspi.txt
 CPU     := zipbones.txt
-SCOPES  := sdramscope.txt refreshcount.txt # spixscope.txt # cpuscope.txt
+SCOPES  := # sdramscope.txt refreshcount.txt # spixscope.txt # cpuscope.txt
 LDSCRIPT:= mem_all.txt mem_flash_bkram.txt mem_bkram_only.txt mem_sdram_bkram.txt
 DATA := clock50.txt $(BASE) $(AUX) $(IO) $(RTC)			\
 	$(DBGBUS) $(MEMORY) $(CPU) $(SCOPES) $(LDSCRIPT)

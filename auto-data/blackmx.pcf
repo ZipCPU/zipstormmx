@@ -42,6 +42,17 @@ set_io i_uart_rx 32
 # set_io io_qspi_dat[3]	64
 
 #
+# SD Card
+#
+# set_io io_sd[3]   101 ## Also CS
+# set_io io_sd_cmd  102 ## Also MOSI
+# set_io o_sd_sck   104 ## Also SCK
+# set_io io_sd[0]   105 ## Also MISO
+# set_io io_sd[1]   106 ## Unused with SPI protocol
+# set_io io_sd[2]   137 ## This is the wrong pin, its also unused w/ SPI
+#
+
+#
 # SDRAM
 #
 # The Bank Select (BS) pins don't appear to be mapped

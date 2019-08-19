@@ -52,16 +52,17 @@ VERILATOR_ROOT ?= $(shell bash -c 'verilator -V|grep VERILATOR_ROOT | head -1 | 
 endif
 export	$(VERILATOR)
 VROOT   := $(VERILATOR_ROOT)
-all: main_tb
 VDEFS   := $(shell ./vversion.sh)
 VINCD   := $(VROOT)/include
 VINC	:= -I$(VINCD) -I$(VINCD)/vltstd -I$(VOBJDR)
 INCS	:= -I. -I../sw/host -I$(RTLD) $(VINC)
 CFLAGS	:= -Og -g -Wall $(INCS) $(VDEFS)
+
 #
 # A list of our sources and headers
 #
-SIMSOURCES:= flashsim.cpp sdramsim.cpp dbluartsim.cpp zipelf.cpp byteswap.cpp
+SIMSOURCES:= flashsim.cpp sdramsim.cpp dbluartsim.cpp zipelf.cpp	\
+	byteswap.cpp sdspisim.cpp
 SIMOBJECTS:= $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(SIMSOURCES)))
 SIMHEADERS:= $(foreach header,$(subst .cpp,.h,$(SIMSOURCES)),$(wildcard $(header)))
 VOBJS   := $(OBJDIR)/verilated.o $(OBJDIR)/verilated_vcd_c.o
@@ -73,7 +74,17 @@ HEADERS := $(foreach header,$(subst .cpp,.h,$(SOURCES)),$(wildcard $(header))) p
 #
 PROGRAMS := main_tb
 # Now return to the "all" target, and fill in some details
-all:	$(PROGRAMS)
+all:	broken # $(PROGRAMS)
+
+.PHONY: broken
+broken:
+	@echo
+	@echo "Warning: The SIM is still a work in progress and (not yet)"
+	@echo "working.  In particular, the SDRAMSIM needs to be updated to"
+	@echo "represent the part that is on this board, not the part it was"
+	@echo "created for.  (The pinouts are different among other things...)"
+	@echo
+
 
 $(OBJDIR)/%.o: %.cpp
 	$(mk-objdir)
